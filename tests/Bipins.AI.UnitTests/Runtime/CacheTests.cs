@@ -71,7 +71,6 @@ public class CacheTests
         var mockRedis = new Mock<IConnectionMultiplexer>();
         var mockDatabase = new Mock<IDatabase>();
         mockRedis.Setup(r => r.GetDatabase(It.IsAny<int>(), It.IsAny<object>())).Returns(mockDatabase.Object);
-        mockRedis.Setup(r => r.GetEndPoints()).Returns(Array.Empty<System.Net.EndPoint>());
 
         var logger = new Mock<ILogger<RedisCache>>();
         var cache = new RedisCache(mockRedis.Object, logger.Object);
