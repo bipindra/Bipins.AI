@@ -66,11 +66,61 @@ builder.Services
         o.CreateCollectionIfMissing = true;
     });
 
-// Basic authentication (simplified for v1)
-builder.Services.AddAuthentication("Basic")
-    .AddScheme<AuthenticationSchemeOptions, BasicAuthenticationHandler>("Basic", null);
+// Register audit logger
+builder.Services.AddSingleton<IAuditLogger, AuditLogger>();
 
-builder.Services.AddAuthorization();
+// Register API key validator
+builder.Services.AddSingleton<IApiKeyValidator, InMemoryApiKeyValidator>();
+
+// Configure authentication
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = "Basic";
+    options.DefaultChallengeScheme = "Basic";
+})
+    .AddScheme<AuthenticationSchemeOptions, BasicAuthenticationHandler>("Basic", null)
+    .AddScheme<AuthenticationSchemeOptions, ApiKeyAuthenticationHandler>("ApiKey", null)
+    .AddJwtBearer("Bearer", options =>
+    {
+        var jwtSecret = builder.Configuration.GetValueOrEnvironmentVariable("Jwt:Secret", "JWT_SECRET");
+        var jwtIssuer = builder.Configuration.GetValueOrEnvironmentVariable("Jwt:Issuer", "JWT_ISSUER") ?? "Bipins.AI";
+        var jwtAudience = builder.Configuration.GetValueOrEnvironmentVariable("Jwt:Audience", "JWT_AUDIENCE") ?? "Bipins.AI";
+
+        if (!string.IsNullOrEmpty(jwtSecret))
+        {
+            var key = System.Text.Encoding.UTF8.GetBytes(jwtSecret);
+            options.TokenValidationParameters = new Microsoft.IdentityModel.Tokens.TokenValidationParameters
+            {
+                ValidateIssuerSigningKey = true,
+                IssuerSigningKey = new Microsoft.IdentityModel.Tokens.SymmetricSecurityKey(key),
+                ValidateIssuer = !string.IsNullOrEmpty(jwtIssuer),
+                ValidIssuer = jwtIssuer,
+                ValidateAudience = !string.IsNullOrEmpty(jwtAudience),
+                ValidAudience = jwtAudience,
+                ValidateLifetime = true,
+                ClockSkew = TimeSpan.Zero
+            };
+        }
+        else
+        {
+            // In development, allow unvalidated tokens (not recommended for production)
+            options.TokenValidationParameters = new Microsoft.IdentityModel.Tokens.TokenValidationParameters
+            {
+                ValidateIssuerSigningKey = false,
+                ValidateIssuer = false,
+                ValidateAudience = false,
+                ValidateLifetime = false
+            };
+        }
+    });
+
+// Configure authorization with role-based policies
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("Admin", policy => policy.RequireRole("Admin"));
+    options.AddPolicy("User", policy => policy.RequireRole("User", "Admin"));
+    options.AddPolicy("TenantAdmin", policy => policy.RequireClaim("tenantId"));
+});
 
 var app = builder.Build();
 
