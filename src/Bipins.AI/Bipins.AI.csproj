@@ -9,67 +9,73 @@
     <TargetsForTfmSpecificBuildOutput>$(TargetsForTfmSpecificBuildOutput);IncludeReferencedAssemblies</TargetsForTfmSpecificBuildOutput>
   </PropertyGroup>
 
-  <Target Name="IncludeReferencedAssemblies">
+  <Target Name="IncludeReferencedAssemblies" BeforeTargets="_GetPackageFiles">
     <ItemGroup>
-      <!-- Include all referenced project DLLs (excluding NuGet packages) -->
-      <BuildOutputInPackage Include="@(ReferenceCopyLocalPaths-&gt;WithMetadataValue('NuGetPackageId', ''))" 
-                           Condition="'%(ReferenceCopyLocalPaths.Extension)' == '.dll'" />
-      <BuildOutputInPackage Include="@(ReferenceCopyLocalPaths-&gt;WithMetadataValue('NuGetPackageId', ''))" 
-                           Condition="'%(ReferenceCopyLocalPaths.Extension)' == '.pdb'" />
-      <BuildOutputInPackage Include="@(ReferenceCopyLocalPaths-&gt;WithMetadataValue('NuGetPackageId', ''))" 
-                           Condition="'%(ReferenceCopyLocalPaths.Extension)' == '.xml'" />
+      <!-- Include all DLLs from referenced projects that are copied locally -->
+      <_ReferencedDlls Include="@(ReferenceCopyLocalPaths)" 
+                       Condition="'%(ReferenceCopyLocalPaths.NuGetPackageId)' == '' AND '%(ReferenceCopyLocalPaths.Extension)' == '.dll'" />
+      <_ReferencedPdbs Include="@(ReferenceCopyLocalPaths)" 
+                       Condition="'%(ReferenceCopyLocalPaths.NuGetPackageId)' == '' AND '%(ReferenceCopyLocalPaths.Extension)' == '.pdb'" />
+      <_ReferencedXmls Include="@(ReferenceCopyLocalPaths)" 
+                       Condition="'%(ReferenceCopyLocalPaths.NuGetPackageId)' == '' AND '%(ReferenceCopyLocalPaths.Extension)' == '.xml'" />
+    </ItemGroup>
+    
+    <ItemGroup>
+      <TfmSpecificPackageFile Include="@(_ReferencedDlls)" PackagePath="lib/$(TargetFramework)/" />
+      <TfmSpecificPackageFile Include="@(_ReferencedPdbs)" PackagePath="lib/$(TargetFramework)/" />
+      <TfmSpecificPackageFile Include="@(_ReferencedXmls)" PackagePath="lib/$(TargetFramework)/" />
     </ItemGroup>
   </Target>
 
   <ItemGroup>
-    <!-- Core Libraries - Include all assets to bundle assemblies -->
+    <!-- Core Libraries - Prevent from becoming package dependencies, include as assemblies -->
     <ProjectReference Include="..\Bipins.AI.Core\Bipins.AI.Core.csproj">
-      <IncludeAssets>all</IncludeAssets>
-      <PrivateAssets>none</PrivateAssets>
+      <PrivateAssets>All</PrivateAssets>
+      <IncludeAssets>runtime;build;native;contentfiles;analyzers</IncludeAssets>
     </ProjectReference>
     <ProjectReference Include="..\Bipins.AI.Runtime\Bipins.AI.Runtime.csproj">
-      <IncludeAssets>all</IncludeAssets>
-      <PrivateAssets>none</PrivateAssets>
+      <PrivateAssets>All</PrivateAssets>
+      <IncludeAssets>runtime;build;native;contentfiles;analyzers</IncludeAssets>
     </ProjectReference>
     <ProjectReference Include="..\Bipins.AI.Ingestion\Bipins.AI.Ingestion.csproj">
-      <IncludeAssets>all</IncludeAssets>
-      <PrivateAssets>none</PrivateAssets>
+      <PrivateAssets>All</PrivateAssets>
+      <IncludeAssets>runtime;build;native;contentfiles;analyzers</IncludeAssets>
     </ProjectReference>
     
-    <!-- LLM Providers - Include all assets to bundle assemblies -->
+    <!-- LLM Providers - Prevent from becoming package dependencies, include as assemblies -->
     <ProjectReference Include="..\Bipins.AI.Providers\Bipins.AI.Providers.OpenAI\Bipins.AI.Providers.OpenAI.csproj">
-      <IncludeAssets>all</IncludeAssets>
-      <PrivateAssets>none</PrivateAssets>
+      <PrivateAssets>All</PrivateAssets>
+      <IncludeAssets>runtime;build;native;contentfiles;analyzers</IncludeAssets>
     </ProjectReference>
     <ProjectReference Include="..\Bipins.AI.Providers\Bipins.AI.Providers.Anthropic\Bipins.AI.Providers.Anthropic.csproj">
-      <IncludeAssets>all</IncludeAssets>
-      <PrivateAssets>none</PrivateAssets>
+      <PrivateAssets>All</PrivateAssets>
+      <IncludeAssets>runtime;build;native;contentfiles;analyzers</IncludeAssets>
     </ProjectReference>
     <ProjectReference Include="..\Bipins.AI.Providers\Bipins.AI.Providers.AzureOpenAI\Bipins.AI.Providers.AzureOpenAI.csproj">
-      <IncludeAssets>all</IncludeAssets>
-      <PrivateAssets>none</PrivateAssets>
+      <PrivateAssets>All</PrivateAssets>
+      <IncludeAssets>runtime;build;native;contentfiles;analyzers</IncludeAssets>
     </ProjectReference>
     <ProjectReference Include="..\Bipins.AI.Providers\Bipins.AI.Providers.Bedrock\Bipins.AI.Providers.Bedrock.csproj">
-      <IncludeAssets>all</IncludeAssets>
-      <PrivateAssets>none</PrivateAssets>
+      <PrivateAssets>All</PrivateAssets>
+      <IncludeAssets>runtime;build;native;contentfiles;analyzers</IncludeAssets>
     </ProjectReference>
     
-    <!-- Vector Database Integrations - Include all assets to bundle assemblies -->
+    <!-- Vector Database Integrations - Prevent from becoming package dependencies, include as assemblies -->
     <ProjectReference Include="..\Bipins.AI.Vectors\Bipins.AI.Vectors.Qdrant\Bipins.AI.Vectors.Qdrant.csproj">
-      <IncludeAssets>all</IncludeAssets>
-      <PrivateAssets>none</PrivateAssets>
+      <PrivateAssets>All</PrivateAssets>
+      <IncludeAssets>runtime;build;native;contentfiles;analyzers</IncludeAssets>
     </ProjectReference>
     <ProjectReference Include="..\Bipins.AI.Vectors\Bipins.AI.Vectors.Pinecone\Bipins.AI.Vectors.Pinecone.csproj">
-      <IncludeAssets>all</IncludeAssets>
-      <PrivateAssets>none</PrivateAssets>
+      <PrivateAssets>All</PrivateAssets>
+      <IncludeAssets>runtime;build;native;contentfiles;analyzers</IncludeAssets>
     </ProjectReference>
     <ProjectReference Include="..\Bipins.AI.Vectors\Bipins.AI.Vectors.Weaviate\Bipins.AI.Vectors.Weaviate.csproj">
-      <IncludeAssets>all</IncludeAssets>
-      <PrivateAssets>none</PrivateAssets>
+      <PrivateAssets>All</PrivateAssets>
+      <IncludeAssets>runtime;build;native;contentfiles;analyzers</IncludeAssets>
     </ProjectReference>
     <ProjectReference Include="..\Bipins.AI.Vectors\Bipins.AI.Vectors.Milvus\Bipins.AI.Vectors.Milvus.csproj">
-      <IncludeAssets>all</IncludeAssets>
-      <PrivateAssets>none</PrivateAssets>
+      <PrivateAssets>All</PrivateAssets>
+      <IncludeAssets>runtime;build;native;contentfiles;analyzers</IncludeAssets>
     </ProjectReference>
   </ItemGroup>
 
