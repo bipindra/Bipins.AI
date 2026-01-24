@@ -54,7 +54,7 @@ public class ChunkingStrategyTests
     {
         var strategy = new SentenceAwareChunkingStrategy(_sentenceLogger.Object);
         var text = "First sentence. Second sentence. Third sentence.";
-        var options = new ChunkOptions("test-tenant", "test-doc", ChunkStrategy.Sentence, MaxSize: 100, Overlap: 0);
+        var options = new ChunkOptions(100, 0, ChunkStrategy.Sentence);
 
         var chunks = await strategy.ChunkAsync(text, options);
 
@@ -136,7 +136,7 @@ public class ChunkingStrategyTests
     {
         var strategy = new SentenceAwareChunkingStrategy(_sentenceLogger.Object);
         var text = "No periods or sentences";
-        var options = new ChunkOptions("test-tenant", "test-doc", ChunkStrategy.Sentence, MaxSize: 100, Overlap: 0);
+        var options = new ChunkOptions(100, 0, ChunkStrategy.Sentence);
 
         var chunks = await strategy.ChunkAsync(text, options);
 
