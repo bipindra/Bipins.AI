@@ -12,7 +12,9 @@ using Bipins.AI.Connectors.Llm.OpenAI;
 using Bipins.AI.Connectors.Vector.Qdrant;
 using Bipins.AI.Ingestion;
 using Bipins.AI.Runtime;
+using Bipins.AI.Api.Middleware;
 using Bipins.AI.Runtime.Observability;
+using Bipins.AI.Runtime.Policies;
 using Bipins.AI.Runtime.Rag;
 using Bipins.AI.Runtime.Routing;
 using Microsoft.AspNetCore.Authentication;
@@ -37,6 +39,15 @@ builder.Services.AddBipinsAI();
 builder.Services.AddBipinsAIRuntime();
 builder.Services.AddBipinsAIIngestion();
 builder.Services.AddBipinsAIRag();
+
+// Configure rate limiting
+builder.Services.Configure<Bipins.AI.Runtime.Policies.RateLimitingOptions>(options =>
+{
+    options.MaxConcurrentRequests = builder.Configuration.GetValue<int>("RateLimiting:MaxConcurrentRequests", 10);
+    options.MaxRequestsPerWindow = builder.Configuration.GetValue<int>("RateLimiting:MaxRequestsPerWindow", 100);
+    var timeWindowMinutes = builder.Configuration.GetValue<int>("RateLimiting:TimeWindowMinutes", 1);
+    options.TimeWindow = TimeSpan.FromMinutes(timeWindowMinutes);
+});
 builder.Services
     .AddBipinsAI()
     .AddOpenAI(o =>
@@ -72,6 +83,9 @@ if (app.Environment.IsDevelopment())
 
 app.UseAuthentication();
 app.UseAuthorization();
+
+// Rate limiting middleware
+app.UseMiddleware<Bipins.AI.Api.Middleware.RateLimitMiddleware>();
 
 // Error handling middleware
 app.Use(async (context, next) =>

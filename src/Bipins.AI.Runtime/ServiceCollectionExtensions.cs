@@ -20,6 +20,8 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<Caching.ICache, Caching.MemoryCache>();
         services.AddSingleton<Pipeline.StepRetryHandler>();
         services.AddSingleton<Pipeline.PipelineRunner>();
+        services.AddSingleton<RateLimitingPolicy>();
+        services.AddSingleton<ThrottlingPolicy>();
 
         return services;
     }
