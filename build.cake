@@ -130,7 +130,8 @@ Task("Pack")
     var packages = GetFiles($"{artifactsDir}/*.nupkg");
     foreach (var package in packages)
     {
-        Information($"Created package: {package.GetFilename()} ({GetFileSize(package)} bytes)");
+        var fileInfo = new System.IO.FileInfo(package.FullPath);
+        Information($"Created package: {package.GetFilename()} ({fileInfo.Length} bytes)");
     }
     
     Information("Pack completed.");
