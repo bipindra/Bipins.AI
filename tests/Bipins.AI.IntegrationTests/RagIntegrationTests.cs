@@ -48,7 +48,7 @@ Neural networks are computing systems inspired by biological neural networks.
             await Task.Delay(1000);
 
             // Retrieve
-            var retrieveRequest = new RetrieveRequest("neural networks", TopK: 2);
+            var retrieveRequest = new RetrieveRequest("neural networks", "test-tenant", TopK: 2);
             var retrieved = await retriever.RetrieveAsync(retrieveRequest);
 
             Assert.True(retrieved.Chunks.Count > 0);

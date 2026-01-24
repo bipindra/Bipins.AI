@@ -101,7 +101,7 @@ try
     var query = "What is machine learning?";
     logger.LogInformation("Query: {Query}", query);
 
-    var retrieveRequest = new RetrieveRequest(query, TopK: 3);
+    var retrieveRequest = new RetrieveRequest(query, "default", TopK: 3);
     var retrieved = await retriever.RetrieveAsync(retrieveRequest);
 
     logger.LogInformation("Retrieved {Count} chunks:", retrieved.Chunks.Count);
