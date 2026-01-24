@@ -126,7 +126,19 @@ app.MapPost("/v1/ingest/text", async (
 
     try
     {
-        var options = new IndexOptions(tenantId, docId, null, null);
+        var versionId = request.RootElement.TryGetProperty("versionId", out var versionProp)
+            ? versionProp.GetString()
+            : null;
+        
+        var updateMode = request.RootElement.TryGetProperty("updateMode", out var modeProp)
+            ? Enum.TryParse<UpdateMode>(modeProp.GetString(), out var mode) ? mode : UpdateMode.Upsert
+            : UpdateMode.Upsert;
+        
+        var deleteOldVersions = request.RootElement.TryGetProperty("deleteOldVersions", out var deleteProp)
+            ? deleteProp.GetBoolean()
+            : false;
+
+        var options = new IndexOptions(tenantId, docId, versionId, null, updateMode, deleteOldVersions);
         var result = await pipeline.IngestAsync(tempFile, options, cancellationToken: context.RequestAborted);
 
         var output = new AiOutputEnvelope(
@@ -149,6 +161,141 @@ app.MapPost("/v1/ingest/text", async (
 })
 .RequireAuthorization()
 .WithName("IngestText")
+.WithOpenApi();
+
+app.MapPost("/v1/ingest/batch", async (
+    HttpContext context,
+    IngestionPipeline pipeline,
+    IModelRouter router,
+    JsonDocument request) =>
+{
+    var tenantId = context.User.FindFirst("tenantId")?.Value ?? "default";
+    var correlationId = Activity.Current?.Id ?? Guid.NewGuid().ToString();
+
+    using var activity = BipinsAiActivitySource.Instance.StartActivity("api.ingest.batch");
+
+    try
+    {
+        var tenantIdFromBody = request.RootElement.TryGetProperty("tenantId", out var tenantProp)
+            ? tenantProp.GetString()
+            : null;
+        tenantId = tenantIdFromBody ?? tenantId;
+
+        var docIds = request.RootElement.TryGetProperty("docIds", out var docIdsProp)
+            ? JsonSerializer.Deserialize<List<string>>(docIdsProp.GetRawText())
+            : null;
+
+        var sourceUris = request.RootElement.TryGetProperty("sourceUris", out var urisProp)
+            ? JsonSerializer.Deserialize<List<string>>(urisProp.GetRawText())
+            : null;
+
+        var texts = request.RootElement.TryGetProperty("texts", out var textsProp)
+            ? JsonSerializer.Deserialize<List<string>>(textsProp.GetRawText())
+            : null;
+
+        if (sourceUris == null && texts == null)
+        {
+            return Results.BadRequest(new { error = "Either sourceUris or texts must be provided" });
+        }
+
+        if (sourceUris != null && texts != null)
+        {
+            return Results.BadRequest(new { error = "Cannot provide both sourceUris and texts" });
+        }
+
+        var maxConcurrency = request.RootElement.TryGetProperty("maxConcurrency", out var concurrencyProp)
+            ? concurrencyProp.GetInt32()
+            : (int?)null;
+
+        // Prepare source URIs
+        var urisToProcess = new List<string>();
+
+        if (sourceUris != null)
+        {
+            urisToProcess.AddRange(sourceUris);
+        }
+        else if (texts != null)
+        {
+            // Create temporary files for text ingestion
+            var tempFiles = new List<string>();
+            try
+            {
+                for (int i = 0; i < texts.Count; i++)
+                {
+                    var tempFile = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}.txt");
+                    await File.WriteAllTextAsync(tempFile, texts[i], context.RequestAborted);
+                    tempFiles.Add(tempFile);
+                    urisToProcess.Add(tempFile);
+                }
+
+                // Process batch ingestion
+                var options = new IndexOptions(tenantId, null, null, null);
+                var result = await pipeline.IngestBatchAsync(
+                    urisToProcess,
+                    options,
+                    maxConcurrency: maxConcurrency,
+                    cancellationToken: context.RequestAborted);
+
+                var output = new AiOutputEnvelope(
+                    result.Errors.Count > 0 ? OutputStatus.Partial : OutputStatus.Success,
+                    "ingest.batch",
+                    JsonSerializer.SerializeToElement(result),
+                    null,
+                    null,
+                    result.Errors.Select(e => e.ErrorMessage).ToList());
+
+                return Results.Ok(output);
+            }
+            finally
+            {
+                // Clean up temporary files
+                foreach (var tempFile in tempFiles)
+                {
+                    if (File.Exists(tempFile))
+                    {
+                        try
+                        {
+                            File.Delete(tempFile);
+                        }
+                        catch
+                        {
+                            // Ignore cleanup errors
+                        }
+                    }
+                }
+            }
+        }
+
+        // Process batch ingestion with source URIs
+        var indexOptions = new IndexOptions(tenantId, null, null, null);
+        var batchResult = await pipeline.IngestBatchAsync(
+            urisToProcess,
+            indexOptions,
+            maxConcurrency: maxConcurrency,
+            cancellationToken: context.RequestAborted);
+
+        var batchOutput = new AiOutputEnvelope(
+            batchResult.Errors.Count > 0 ? OutputStatus.Partial : OutputStatus.Success,
+            "ingest.batch",
+            JsonSerializer.SerializeToElement(batchResult),
+            null,
+            null,
+            batchResult.Errors.Select(e => e.ErrorMessage).ToList());
+
+        return Results.Ok(batchOutput);
+    }
+    catch (Exception ex)
+    {
+        activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+        var logger = context.RequestServices.GetRequiredService<ILogger<Program>>();
+        logger.LogError(ex, "Error in batch ingestion endpoint");
+        return Results.Problem(
+            detail: ex.Message,
+            statusCode: 500);
+    }
+})
+.RequireAuthorization()
+.WithName("IngestBatch")
 .WithOpenApi();
 
 app.MapPost("/v1/chat/stream", async (

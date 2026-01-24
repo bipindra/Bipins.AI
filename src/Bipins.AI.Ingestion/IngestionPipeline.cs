@@ -74,4 +74,89 @@ public class IngestionPipeline
 
         return result;
     }
+
+    /// <summary>
+    /// Ingests multiple documents through the full pipeline in batch.
+    /// </summary>
+    public async Task<BatchIndexResult> IngestBatchAsync(
+        IEnumerable<string> sourceUris,
+        IndexOptions options,
+        ChunkOptions? chunkOptions = null,
+        int? maxConcurrency = null,
+        CancellationToken cancellationToken = default)
+    {
+        var sourceUriList = sourceUris.ToList();
+        _logger.LogInformation("Starting batch ingestion pipeline for {Count} documents", sourceUriList.Count);
+
+        maxConcurrency ??= Environment.ProcessorCount;
+        var semaphore = new SemaphoreSlim(maxConcurrency.Value);
+
+        var results = new List<IndexResult>();
+        var errors = new List<BatchIngestionError>();
+
+        var tasks = sourceUriList.Select(async sourceUri =>
+        {
+            await semaphore.WaitAsync(cancellationToken);
+            try
+            {
+                var result = await IngestAsync(sourceUri, options, chunkOptions, cancellationToken);
+                lock (results)
+                {
+                    results.Add(result);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to ingest document {SourceUri}", sourceUri);
+                lock (errors)
+                {
+                    errors.Add(new BatchIngestionError(sourceUri, ex.Message));
+                }
+            }
+            finally
+            {
+                semaphore.Release();
+            }
+        });
+
+        await Task.WhenAll(tasks);
+
+        var totalChunks = results.Sum(r => r.ChunksIndexed);
+        var totalVectors = results.Sum(r => r.VectorsCreated);
+
+        _logger.LogInformation(
+            "Batch ingestion completed: {SuccessCount}/{TotalCount} documents, {TotalChunks} chunks indexed, {TotalVectors} vectors created",
+            results.Count,
+            sourceUriList.Count,
+            totalChunks,
+            totalVectors);
+
+        return new BatchIndexResult(
+            results,
+            errors,
+            totalChunks,
+            totalVectors);
+    }
 }
+
+/// <summary>
+/// Result of batch ingestion operation.
+/// </summary>
+/// <param name="Results">Individual ingestion results.</param>
+/// <param name="Errors">Errors encountered during batch processing.</param>
+/// <param name="TotalChunksIndexed">Total number of chunks indexed across all documents.</param>
+/// <param name="TotalVectorsCreated">Total number of vectors created across all documents.</param>
+public record BatchIndexResult(
+    List<IndexResult> Results,
+    List<BatchIngestionError> Errors,
+    int TotalChunksIndexed,
+    int TotalVectorsCreated);
+
+/// <summary>
+/// Error encountered during batch ingestion.
+/// </summary>
+/// <param name="SourceUri">The source URI that failed.</param>
+/// <param name="ErrorMessage">The error message.</param>
+public record BatchIngestionError(
+    string SourceUri,
+    string ErrorMessage);

@@ -103,6 +103,51 @@ public class DefaultIndexer : IIndexer
                 records.Add(record);
             }
 
+            // Handle versioning: delete old versions if needed
+            if (options.UpdateMode == UpdateMode.Update && options.DocId != null && options.DeleteOldVersions)
+            {
+                try
+                {
+                    // Query to find old version IDs
+                    VectorFilter? queryFilter = new VectorFilterPredicate(
+                        new FilterPredicate("docId", FilterOperator.Eq, options.DocId));
+                    
+                    // If we have a version ID, exclude it from deletion
+                    if (options.VersionId != null)
+                    {
+                        var versionFilter = new VectorFilterPredicate(
+                            new FilterPredicate("versionId", FilterOperator.Ne, options.VersionId));
+                        queryFilter = new VectorFilterAnd(new[] { queryFilter, versionFilter });
+                    }
+
+                    // Query to get IDs of old versions
+                    // Use a dummy vector for filtering (dimension 1536 is common for OpenAI embeddings)
+                    var dummyVector = new float[1536].AsMemory();
+                    var queryRequest = new VectorQueryRequest(
+                        dummyVector,
+                        TopK: 10000, // Large number to get all matches
+                        queryFilter,
+                        options.CollectionName);
+                    
+                    var queryResponse = await _vectorStore.QueryAsync(queryRequest, cancellationToken);
+                    var oldVersionIds = queryResponse.Matches.Select(m => m.Record.Id).ToList();
+
+                    if (oldVersionIds.Count > 0)
+                    {
+                        var deleteRequest = new VectorDeleteRequest(
+                            oldVersionIds,
+                            options.CollectionName);
+                        await _vectorStore.DeleteAsync(deleteRequest, cancellationToken);
+                        _logger.LogInformation("Deleted {Count} old version records for document {DocId}", oldVersionIds.Count, options.DocId);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to delete old versions for document {DocId}", options.DocId);
+                    // Continue with indexing even if deletion fails
+                }
+            }
+
             // Upsert to vector store
             var upsertRequest = new VectorUpsertRequest(records, options.CollectionName);
             await _vectorStore.UpsertAsync(upsertRequest, cancellationToken);
