@@ -18,6 +18,7 @@ using Bipins.AI.Runtime.Observability;
 using Bipins.AI.Runtime.Policies;
 using Bipins.AI.Runtime.Rag;
 using Bipins.AI.Runtime.Routing;
+using Bipins.AI.Core.CostTracking;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
@@ -300,6 +301,21 @@ app.MapPost("/v1/ingest/text", async (
         // Record quota usage
         var estimatedStorage = result.ChunksIndexed * 1024; // Rough estimate
         await quotaEnforcer.RecordDocumentIngestionAsync(tenantId, result.ChunksIndexed, estimatedStorage, context.RequestAborted);
+
+        // Record cost for ingestion
+        var costCalculator = context.RequestServices.GetRequiredService<ICostCalculator>();
+        var costTracker = context.RequestServices.GetRequiredService<ICostTracker>();
+        var storageCost = costCalculator.CalculateStorageCost(estimatedStorage);
+
+        var costRecord = new CostRecord(
+            Id: Guid.NewGuid().ToString(),
+            TenantId: tenantId,
+            OperationType: CostOperationType.Ingestion,
+            Provider: "VectorStore",
+            StorageBytes: estimatedStorage,
+            Cost: storageCost);
+
+        await costTracker.RecordCostAsync(costRecord, context.RequestAborted);
 
         var output = new AiOutputEnvelope(
             result.Errors?.Count > 0 ? OutputStatus.Partial : OutputStatus.Success,
@@ -676,6 +692,32 @@ app.MapPost("/v1/chat", async (
         var tokensUsed = response.Usage?.TotalTokens ?? estimatedTokens;
         await quotaEnforcer.RecordChatRequestAsync(tenantId, tokensUsed, context.RequestAborted);
 
+        // Record cost
+        if (response.Usage != null && !string.IsNullOrEmpty(response.ModelId))
+        {
+            var costCalculator = context.RequestServices.GetRequiredService<ICostCalculator>();
+            var costTracker = context.RequestServices.GetRequiredService<ICostTracker>();
+            var provider = GetProviderFromModelId(response.ModelId);
+            var cost = costCalculator.CalculateChatCost(
+                provider,
+                response.ModelId,
+                response.Usage.PromptTokens,
+                response.Usage.CompletionTokens);
+
+            var costRecord = new CostRecord(
+                Id: Guid.NewGuid().ToString(),
+                TenantId: tenantId,
+                OperationType: CostOperationType.Chat,
+                Provider: provider,
+                ModelId: response.ModelId,
+                TokensUsed: response.Usage.TotalTokens,
+                PromptTokens: response.Usage.PromptTokens,
+                CompletionTokens: response.Usage.CompletionTokens,
+                Cost: cost);
+
+            await costTracker.RecordCostAsync(costRecord, context.RequestAborted);
+        }
+
         // Parse structured output if requested
         JsonElement? parsedStructuredOutput = null;
         if (chatRequest.StructuredOutput != null && !string.IsNullOrEmpty(response.Content))
@@ -973,6 +1015,101 @@ app.MapPut("/v1/tenants/{tenantId}", async (
 })
 .RequireAuthorization("Admin")
 .WithName("UpdateTenant")
+.WithOpenApi();
+
+// Cost tracking endpoints
+app.MapGet("/v1/costs/{tenantId}", async (
+    HttpContext context,
+    string tenantId,
+    ICostTracker costTracker) =>
+{
+    using var activity = BipinsAiActivitySource.Instance.StartActivity("api.costs.get");
+
+    try
+    {
+        // Validate tenant ID
+        TenantValidator.ValidateOrThrow(tenantId);
+
+        // Get query parameters
+        var startTimeStr = context.Request.Query["startTime"].FirstOrDefault();
+        var endTimeStr = context.Request.Query["endTime"].FirstOrDefault();
+
+        var startTime = !string.IsNullOrEmpty(startTimeStr) && DateTimeOffset.TryParse(startTimeStr, out var st)
+            ? st
+            : DateTimeOffset.UtcNow.AddDays(-30); // Default to last 30 days
+
+        var endTime = !string.IsNullOrEmpty(endTimeStr) && DateTimeOffset.TryParse(endTimeStr, out var et)
+            ? et
+            : DateTimeOffset.UtcNow;
+
+        var summary = await costTracker.GetCostSummaryAsync(tenantId, startTime, endTime, context.RequestAborted);
+
+        var output = new AiOutputEnvelope(
+            OutputStatus.Success,
+            "cost.summary",
+            JsonSerializer.SerializeToElement(summary));
+
+        return Results.Ok(output);
+    }
+    catch (Exception ex)
+    {
+        activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+        var logger = context.RequestServices.GetRequiredService<ILogger<Program>>();
+        logger.LogError(ex, "Error getting cost summary for tenant {TenantId}", tenantId);
+        return Results.Problem(
+            detail: ex.Message,
+            statusCode: 500);
+    }
+})
+.RequireAuthorization()
+.WithName("GetCostSummary")
+.WithOpenApi();
+
+app.MapGet("/v1/costs/{tenantId}/records", async (
+    HttpContext context,
+    string tenantId,
+    ICostTracker costTracker) =>
+{
+    using var activity = BipinsAiActivitySource.Instance.StartActivity("api.costs.records.get");
+
+    try
+    {
+        // Validate tenant ID
+        TenantValidator.ValidateOrThrow(tenantId);
+
+        // Get query parameters
+        var startTimeStr = context.Request.Query["startTime"].FirstOrDefault();
+        var endTimeStr = context.Request.Query["endTime"].FirstOrDefault();
+
+        var startTime = !string.IsNullOrEmpty(startTimeStr) && DateTimeOffset.TryParse(startTimeStr, out var st)
+            ? st
+            : DateTimeOffset.UtcNow.AddDays(-30); // Default to last 30 days
+
+        var endTime = !string.IsNullOrEmpty(endTimeStr) && DateTimeOffset.TryParse(endTimeStr, out var et)
+            ? et
+            : DateTimeOffset.UtcNow;
+
+        var records = await costTracker.GetCostRecordsAsync(tenantId, startTime, endTime, context.RequestAborted);
+
+        var output = new AiOutputEnvelope(
+            OutputStatus.Success,
+            "cost.records",
+            JsonSerializer.SerializeToElement(records));
+
+        return Results.Ok(output);
+    }
+    catch (Exception ex)
+    {
+        activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+        var logger = context.RequestServices.GetRequiredService<ILogger<Program>>();
+        logger.LogError(ex, "Error getting cost records for tenant {TenantId}", tenantId);
+        return Results.Problem(
+            detail: ex.Message,
+            statusCode: 500);
+    }
+})
+.RequireAuthorization()
+.WithName("GetCostRecords")
 .WithOpenApi();
 
 app.MapGet("/v1/documents/{docId}/versions/{versionId}", async (

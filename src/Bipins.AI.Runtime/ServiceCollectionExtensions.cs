@@ -1,4 +1,5 @@
 using Bipins.AI.Core.Runtime.Policies;
+using Bipins.AI.Core.CostTracking;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
@@ -68,6 +69,10 @@ public static class ServiceCollectionExtensions
         {
             services.AddSingleton<IRateLimiter, MemoryRateLimiter>();
         }
+
+        // Register cost tracking
+        services.AddSingleton<ICostCalculator, CostTracking.DefaultCostCalculator>();
+        services.AddSingleton<ICostTracker, CostTracking.InMemoryCostTracker>();
 
         return services;
     }
