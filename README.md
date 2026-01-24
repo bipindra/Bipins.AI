@@ -28,9 +28,18 @@ graph TB
         Cache[Cache Interface]
     end
     
-    subgraph Connectors["Bipins.AI.Connectors"]
-        OpenAI[OpenAI Connector]
-        Qdrant[Qdrant Connector]
+    subgraph Providers["Bipins.AI.Providers"]
+        OpenAI[OpenAI Provider]
+        Anthropic[Anthropic Provider]
+        AzureOpenAI[Azure OpenAI Provider]
+        Bedrock[Bedrock Provider]
+    end
+    
+    subgraph Vectors["Bipins.AI.Vectors"]
+        Qdrant[Qdrant Vector Store]
+        Pinecone[Pinecone Vector Store]
+        Weaviate[Weaviate Vector Store]
+        Milvus[Milvus Vector Store]
     end
     
     subgraph Ingestion["Bipins.AI.Ingestion"]
@@ -44,10 +53,13 @@ graph TB
     end
     
     Core --> Runtime
-    Core --> Connectors
+    Core --> Providers
+    Core --> Vectors
     Core --> Ingestion
-    Runtime --> Connectors
-    Ingestion --> Connectors
+    Runtime --> Providers
+    Runtime --> Vectors
+    Ingestion --> Providers
+    Ingestion --> Vectors
     API --> Runtime
     API --> Ingestion
 ```
@@ -208,8 +220,8 @@ Query the vector store directly.
 
 ```csharp
 using Bipins.AI.Core;
-using Bipins.AI.Connectors.Llm.OpenAI;
-using Bipins.AI.Connectors.Vector.Qdrant;
+using Bipins.AI.Providers.OpenAI;
+using Bipins.AI.Vectors.Qdrant;
 using Bipins.AI.Ingestion;
 using Bipins.AI.Runtime;
 using Bipins.AI.Runtime.Rag;
@@ -256,7 +268,7 @@ var composer = serviceProvider.GetRequiredService<IRagComposer>();
 var router = serviceProvider.GetRequiredService<IModelRouter>();
 
 // Retrieve relevant chunks
-var retrieveRequest = new RetrieveRequest("your query", topK: 5);
+var retrieveRequest = new RetrieveRequest("your query", "tenant1", topK: 5);
 var retrieved = await retriever.RetrieveAsync(retrieveRequest);
 
 // Compose augmented request
@@ -276,7 +288,7 @@ var response = await chatModel.GenerateAsync(augmentedRequest);
 
 ### Adding a New LLM Provider
 
-1. Create a new project: `Bipins.AI.Connectors.Llm.YourProvider`
+1. Create a new project: `Bipins.AI.Providers.YourProvider`
 
 2. Implement `IChatModel`:
 
@@ -324,7 +336,7 @@ public static class YourServiceCollectionExtensions
 
 ### Adding a New Vector Database Provider
 
-1. Create a new project: `Bipins.AI.Connectors.Vector.YourProvider`
+1. Create a new project: `Bipins.AI.Vectors.YourProvider`
 
 2. Implement `IVectorStore`:
 
@@ -366,13 +378,25 @@ Bipins.AI/
 │   ├── Bipins.AI.Core/              # Core contracts and models
 │   ├── Bipins.AI.Runtime/           # Pipeline execution system
 │   ├── Bipins.AI.Ingestion/         # Document ingestion pipeline
-│   ├── Bipins.AI.Connectors/        # Provider connectors
+│   ├── Bipins.AI.Providers/         # LLM provider implementations
+│   │   ├── Bipins.AI.Providers.OpenAI/
+│   │   ├── Bipins.AI.Providers.Anthropic/
+│   │   ├── Bipins.AI.Providers.AzureOpenAI/
+│   │   └── Bipins.AI.Providers.Bedrock/
+│   ├── Bipins.AI.Vectors/           # Vector store implementations
+│   │   ├── Bipins.AI.Vectors.Qdrant/
+│   │   ├── Bipins.AI.Vectors.Pinecone/
+│   │   ├── Bipins.AI.Vectors.Weaviate/
+│   │   ├── Bipins.AI.Vectors.Milvus/
+│   │   ├── Bipins.AI.Vectors.PgVector/
+│   │   └── Bipins.AI.Vectors.OpenSearch/
 │   ├── Bipins.AI.Api/               # ASP.NET Core Minimal API
 │   ├── Bipins.AI.Worker/            # BackgroundService worker
 │   └── Bipins.AI.Samples/            # Console sample app
 ├── tests/
 │   ├── Bipins.AI.UnitTests/
-│   └── Bipins.AI.IntegrationTests/
+│   ├── Bipins.AI.IntegrationTests/
+│   └── Bipins.AI.Benchmarks/
 ├── deploy/
 │   └── docker-compose.yml
 └── docs/
@@ -434,10 +458,26 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
+## Supported Providers
+
+### LLM Providers
+- ✅ OpenAI (GPT-3.5, GPT-4, etc.)
+- ✅ Anthropic (Claude)
+- ✅ Azure OpenAI
+- ✅ AWS Bedrock
+
+### Vector Stores
+- ✅ Qdrant
+- ✅ Pinecone
+- ✅ Weaviate
+- ✅ Milvus
+- ✅ PgVector (PostgreSQL extension)
+- ✅ OpenSearch
+
 ## ToDo
 
-- [ ] Add support for additional LLM providers (Anthropic Claude, Azure OpenAI, AWS Bedrock)
-- [ ] Add support for additional vector databases (Pinecone, Weaviate, Milvus)
+- [ ] Add support for additional LLM providers
+- [ ] Add support for additional vector databases
 - [ ] Implement streaming responses for chat endpoints
 - [ ] Add batch ingestion support for multiple documents
 - [ ] Implement document versioning and update capabilities
