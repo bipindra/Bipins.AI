@@ -1,3 +1,4 @@
+using Bipins.AI.Core.Runtime.Policies;
 using Microsoft.Extensions.Logging;
 
 namespace Bipins.AI.Runtime.Policies;
@@ -9,38 +10,43 @@ public class RateLimitingPolicy
 {
     private readonly ILogger<RateLimitingPolicy> _logger;
     private readonly RateLimitingOptions _options;
+    private readonly IRateLimiter _rateLimiter;
     private readonly SemaphoreSlim _semaphore;
-    private readonly Queue<DateTime> _requestTimestamps;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="RateLimitingPolicy"/> class.
     /// </summary>
     public RateLimitingPolicy(
         ILogger<RateLimitingPolicy> logger,
-        RateLimitingOptions options)
+        RateLimitingOptions options,
+        IRateLimiter rateLimiter)
     {
         _logger = logger;
         _options = options;
+        _rateLimiter = rateLimiter;
         _semaphore = new SemaphoreSlim(options.MaxConcurrentRequests, options.MaxConcurrentRequests);
-        _requestTimestamps = new Queue<DateTime>();
     }
 
     /// <summary>
     /// Executes an action with rate limiting applied.
     /// </summary>
-    public async Task<T> ExecuteAsync<T>(Func<CancellationToken, Task<T>> action, CancellationToken cancellationToken = default)
+    public async Task<T> ExecuteAsync<T>(string key, Func<CancellationToken, Task<T>> action, CancellationToken cancellationToken = default)
     {
         // Wait for semaphore (concurrent request limit)
         await _semaphore.WaitAsync(cancellationToken);
         try
         {
-            // Wait for rate limit (requests per time window)
-            await WaitForRateLimitAsync(cancellationToken);
+            // Check rate limit
+            var allowed = await _rateLimiter.TryAcquireAsync(
+                key,
+                _options.MaxRequestsPerWindow,
+                _options.TimeWindow,
+                cancellationToken);
 
-            // Record request timestamp
-            lock (_requestTimestamps)
+            if (!allowed)
             {
-                _requestTimestamps.Enqueue(DateTime.UtcNow);
+                throw new RateLimitExceededException(
+                    $"Rate limit exceeded for key '{key}': {_options.MaxRequestsPerWindow} requests per {_options.TimeWindow}");
             }
 
             return await action(cancellationToken);
@@ -54,71 +60,25 @@ public class RateLimitingPolicy
     /// <summary>
     /// Executes an action with rate limiting applied (void return).
     /// </summary>
-    public async Task ExecuteAsync(Func<CancellationToken, Task> action, CancellationToken cancellationToken = default)
+    public async Task ExecuteAsync(string key, Func<CancellationToken, Task> action, CancellationToken cancellationToken = default)
     {
-        await ExecuteAsync(async ct =>
+        await ExecuteAsync(key, async ct =>
         {
             await action(ct);
             return 0; // Dummy return value
         }, cancellationToken);
     }
 
-    private async Task WaitForRateLimitAsync(CancellationToken cancellationToken)
-    {
-        DateTime? oldestTimestamp = null;
-        int requestCount = 0;
-
-        lock (_requestTimestamps)
-        {
-            // Remove timestamps outside the time window
-            var cutoffTime = DateTime.UtcNow - _options.TimeWindow;
-            while (_requestTimestamps.Count > 0 && _requestTimestamps.Peek() < cutoffTime)
-            {
-                _requestTimestamps.Dequeue();
-            }
-
-            requestCount = _requestTimestamps.Count;
-            if (_requestTimestamps.Count > 0)
-            {
-                oldestTimestamp = _requestTimestamps.Peek();
-            }
-        }
-
-        // If we've exceeded the rate limit, wait until the oldest request expires
-        if (requestCount >= _options.MaxRequestsPerWindow && oldestTimestamp.HasValue)
-        {
-            var waitTime = _options.TimeWindow - (DateTime.UtcNow - oldestTimestamp.Value);
-            if (waitTime > TimeSpan.Zero)
-            {
-                _logger.LogDebug(
-                    "Rate limit reached ({Count}/{Max} requests). Waiting {WaitTime}ms",
-                    requestCount,
-                    _options.MaxRequestsPerWindow,
-                    waitTime.TotalMilliseconds);
-
-                await Task.Delay(waitTime, cancellationToken);
-            }
-        }
-    }
-
     /// <summary>
     /// Gets the number of seconds to wait before retrying (if rate limited).
     /// </summary>
-    public int? GetRetryAfterSeconds()
+    public async Task<int?> GetRetryAfterSecondsAsync(string key, CancellationToken cancellationToken = default)
     {
-        lock (_requestTimestamps)
-        {
-            if (_requestTimestamps.Count >= _options.MaxRequestsPerWindow && _requestTimestamps.Count > 0)
-            {
-                var oldestTimestamp = _requestTimestamps.Peek();
-                var waitTime = _options.TimeWindow - (DateTime.UtcNow - oldestTimestamp);
-                if (waitTime > TimeSpan.Zero)
-                {
-                    return (int)Math.Ceiling(waitTime.TotalSeconds);
-                }
-            }
-            return null;
-        }
+        return await _rateLimiter.GetRetryAfterAsync(
+            key,
+            _options.MaxRequestsPerWindow,
+            _options.TimeWindow,
+            cancellationToken);
     }
 
     /// <summary>

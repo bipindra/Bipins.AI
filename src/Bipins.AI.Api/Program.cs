@@ -36,7 +36,7 @@ builder.Services.AddSwaggerGen();
 
 // Add Bipins.AI services
 builder.Services.AddBipinsAI();
-builder.Services.AddBipinsAIRuntime();
+builder.Services.AddBipinsAIRuntime(builder.Configuration);
 builder.Services.AddBipinsAIIngestion();
 builder.Services.AddBipinsAIRag();
 

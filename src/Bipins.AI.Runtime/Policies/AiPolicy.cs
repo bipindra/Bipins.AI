@@ -8,9 +8,11 @@ namespace Bipins.AI.Runtime.Policies;
 /// <param name="AllowedTools">List of allowed tool names (null = all allowed).</param>
 /// <param name="LoggingFlags">Flags for what to log.</param>
 /// <param name="RedactionFlags">Flags for what to redact in logs.</param>
+/// <param name="RateLimitOptions">Optional rate limiting options for this tenant.</param>
 public record AiPolicy(
     IReadOnlyList<string> AllowedProviders,
     int? MaxTokens = null,
     IReadOnlyList<string>? AllowedTools = null,
     LoggingFlags LoggingFlags = LoggingFlags.None,
-    RedactionFlags RedactionFlags = RedactionFlags.None);
+    RedactionFlags RedactionFlags = RedactionFlags.None,
+    RateLimitingOptions? RateLimitOptions = null);

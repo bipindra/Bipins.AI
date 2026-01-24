@@ -22,7 +22,13 @@ public class DefaultPolicyProvider : IAiPolicyProvider
             MaxTokens: 100000,
             AllowedTools: null,
             LoggingFlags: LoggingFlags.All,
-            RedactionFlags: RedactionFlags.None);
+            RedactionFlags: RedactionFlags.None,
+            RateLimitOptions: new RateLimitingOptions
+            {
+                MaxConcurrentRequests = 10,
+                MaxRequestsPerWindow = 100,
+                TimeWindow = TimeSpan.FromMinutes(1)
+            });
     }
 
     /// <summary>
@@ -54,7 +60,13 @@ public class DefaultPolicyProvider : IAiPolicyProvider
             MaxTokens: null,
             AllowedTools: null,
             LoggingFlags: LoggingFlags.None,
-            RedactionFlags: RedactionFlags.All);
+            RedactionFlags: RedactionFlags.All,
+            RateLimitOptions: new RateLimitingOptions
+            {
+                MaxConcurrentRequests = 1,
+                MaxRequestsPerWindow = 10,
+                TimeWindow = TimeSpan.FromMinutes(1)
+            });
 
         return Task.FromResult(fallback);
     }
