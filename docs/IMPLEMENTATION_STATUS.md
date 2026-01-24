@@ -66,16 +66,16 @@ This document tracks the implementation progress of all TODO items.
 - ⏳ Documentation updates needed
 
 ### 6. Add support for structured output/function calling
-**Status:** 🚧 In Progress
+**Status:** ✅ Complete
 
 - ✅ StructuredOutputOptions model created
 - ✅ StructuredOutputHelper for parsing/validation
 - ✅ ChatRequest and ChatResponse support structured output
 - ✅ OpenAI provider supports structured output
-- 📋 Add structured output support to Anthropic
-- 📋 Add structured output support to Azure OpenAI
-- 📋 Add structured output support to Bedrock
-- ✅ Function calling/tools already implemented for all providers
+- ✅ Anthropic provider supports structured output (JSON mode)
+- ✅ Azure OpenAI provider supports structured output
+- ✅ Bedrock provider supports structured output (JSON mode)
+- ✅ Function calling/tools implemented for all providers
 
 ### 7. Implement rate limiting and throttling policies
 **Status:** ✅ Complete
