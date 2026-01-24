@@ -146,10 +146,11 @@ public class PoliciesTests
     [Fact]
     public async Task DistributedRateLimiter_WithRedis_AllowsRequests()
     {
-        var limiter = new DistributedRateLimiter(_distributedLogger.Object, "redis://localhost:6379");
+        // Create a mock IConnectionMultiplexer or use null (will fall back to in-memory)
+        var limiter = new DistributedRateLimiter(_distributedLogger.Object, null);
         var result = await limiter.TryAcquireAsync("key1", 10, TimeSpan.FromMinutes(1));
 
-        // Currently returns true as Redis implementation is TODO
+        // Without Redis connection, it falls back to in-memory and allows requests
         Assert.True(result);
     }
 

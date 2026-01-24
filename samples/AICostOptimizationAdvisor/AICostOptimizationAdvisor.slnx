@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/src/" />
+  <Folder Name="/src/Lambda/">
+    <Project Path="src/Lambda/AnalyzeCosts/AnalyzeCosts.csproj" />
+    <Project Path="src/Lambda/GetAnalysisHistory/GetAnalysisHistory.csproj" />
+    <Project Path="src/Lambda/GetCostData/GetCostData.csproj" />
+  </Folder>
+  <Folder Name="/src/Shared/">
+    <Project Path="src/Shared/AICostOptimizationAdvisor.Shared.csproj" />
+  </Folder>
+</Solution>

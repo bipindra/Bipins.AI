@@ -61,9 +61,12 @@ public static class ServiceCollectionExtensions
         if (!string.IsNullOrEmpty(redisConnectionString))
         {
             services.AddSingleton<IRateLimiter>(sp =>
-                new DistributedRateLimiter(
+            {
+                var redis = sp.GetService<StackExchange.Redis.IConnectionMultiplexer>();
+                return new DistributedRateLimiter(
                     sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<DistributedRateLimiter>>(),
-                    redisConnectionString));
+                    redis);
+            });
         }
         else
         {

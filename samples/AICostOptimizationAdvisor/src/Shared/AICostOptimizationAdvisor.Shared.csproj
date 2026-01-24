@@ -1,0 +1,14 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="AWSSDK.CostExplorer" Version="3.7.400.50" />
+    <PackageReference Include="AWSSDK.BedrockRuntime" Version="3.7.400.50" />
+  </ItemGroup>
+
+</Project>

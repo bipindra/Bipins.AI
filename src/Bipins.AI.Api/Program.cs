@@ -688,7 +688,9 @@ app.MapPost("/v1/chat", async (
 
         // Generate response
         var chatModel = await router.SelectChatModelAsync(tenantId, augmentedRequest, context.RequestAborted);
+        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
         var response = await chatModel.GenerateAsync(augmentedRequest, context.RequestAborted);
+        stopwatch.Stop();
 
         // Record quota usage
         var tokensUsed = response.Usage?.TotalTokens ?? estimatedTokens;
@@ -750,12 +752,15 @@ app.MapPost("/v1/chat", async (
             c.Chunk.Text,
             c.Score)).ToList();
 
+        var modelProvider = !string.IsNullOrEmpty(response.ModelId) 
+            ? GetProviderFromModelId(response.ModelId) 
+            : "Unknown";
         var telemetry = response.Usage != null
             ? new ModelTelemetry(
                 response.ModelId ?? "unknown",
                 response.Usage.TotalTokens,
-                0, // TODO: Calculate latency
-                "OpenAI")
+                stopwatch.ElapsedMilliseconds,
+                modelProvider)
             : null;
 
         var output = new AiOutputEnvelope(

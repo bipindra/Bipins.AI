@@ -1,0 +1,156 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: AI Cost Optimization Advisor - Serverless application for analyzing AWS costs
+
+Globals:
+  Function:
+    Runtime: provided.al2
+    Architectures:
+      - x86_64
+    Timeout: 300
+    MemorySize: 512
+    Environment:
+      Variables:
+        COST_DATA_CACHE_TABLE: !Ref CostDataCacheTable
+        COST_ANALYSES_TABLE: !Ref CostAnalysesTable
+        BEDROCK_MODEL_ID: anthropic.claude-3-sonnet-20240229-v1:0
+
+Resources:
+  # API Gateway
+  CostOptimizationApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name: CostOptimizationApi
+      StageName: Prod
+      Cors:
+        AllowMethods: "'GET,POST,OPTIONS'"
+        AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key'"
+        AllowOrigin: "'*'"
+
+  # Lambda Functions
+  GetCostDataFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: GetCostData
+      CodeUri: ../src/Lambda/GetCostData/
+      Handler: GetCostData::GetCostData.Function::FunctionHandler
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - ce:GetCostAndUsage
+                - ce:GetDimensionValues
+              Resource: '*'
+            - Effect: Allow
+              Action:
+                - dynamodb:GetItem
+                - dynamodb:PutItem
+              Resource: !GetAtt CostDataCacheTable.Arn
+      Events:
+        GetCosts:
+          Type: Api
+          Properties:
+            RestApiId: !Ref CostOptimizationApi
+            Path: /costs
+            Method: get
+
+  AnalyzeCostsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: AnalyzeCosts
+      CodeUri: ../src/Lambda/AnalyzeCosts/
+      Handler: AnalyzeCosts::AnalyzeCosts.Function::FunctionHandler
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - bedrock:InvokeModel
+              Resource: 'arn:aws:bedrock:*::foundation-model/anthropic.claude-3-sonnet-20240229-v1:0'
+            - Effect: Allow
+              Action:
+                - dynamodb:PutItem
+              Resource: !GetAtt CostAnalysesTable.Arn
+      Events:
+        AnalyzeCosts:
+          Type: Api
+          Properties:
+            RestApiId: !Ref CostOptimizationApi
+            Path: /analyze
+            Method: post
+
+  GetAnalysisHistoryFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: GetAnalysisHistory
+      CodeUri: ../src/Lambda/GetAnalysisHistory/
+      Handler: GetAnalysisHistory::GetAnalysisHistory.Function::FunctionHandler
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - dynamodb:Scan
+                - dynamodb:Query
+              Resource: !GetAtt CostAnalysesTable.Arn
+      Events:
+        GetHistory:
+          Type: Api
+          Properties:
+            RestApiId: !Ref CostOptimizationApi
+            Path: /history
+            Method: get
+
+  # DynamoDB Tables
+  CostDataCacheTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: CostDataCache
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: date
+          AttributeType: S
+        - AttributeName: service
+          AttributeType: S
+      KeySchema:
+        - AttributeName: date
+          KeyType: HASH
+        - AttributeName: service
+          KeyType: RANGE
+      TimeToLiveSpecification:
+        AttributeName: ttl
+        Enabled: true
+
+  CostAnalysesTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: CostAnalyses
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: analysisId
+          AttributeType: S
+        - AttributeName: timestamp
+          AttributeType: N
+      KeySchema:
+        - AttributeName: analysisId
+          KeyType: HASH
+        - AttributeName: timestamp
+          KeyType: RANGE
+
+Outputs:
+  ApiUrl:
+    Description: API Gateway endpoint URL
+    Value: !Sub 'https://${CostOptimizationApi}.execute-api.${AWS::Region}.amazonaws.com/Prod'
+  GetCostDataFunctionArn:
+    Description: GetCostData Lambda Function ARN
+    Value: !GetAtt GetCostDataFunction.Arn
+  AnalyzeCostsFunctionArn:
+    Description: AnalyzeCosts Lambda Function ARN
+    Value: !GetAtt AnalyzeCostsFunction.Arn
+  GetAnalysisHistoryFunctionArn:
+    Description: GetAnalysisHistory Lambda Function ARN
+    Value: !GetAtt GetAnalysisHistoryFunction.Arn

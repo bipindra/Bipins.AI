@@ -1,0 +1,93 @@
+.analysis-results {
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.analysis-results h2 {
+  margin-bottom: 20px;
+  color: #333;
+}
+
+.summary {
+  margin-bottom: 30px;
+  padding: 15px;
+  background: #f8f9fa;
+  border-radius: 4px;
+}
+
+.summary h3 {
+  margin-bottom: 10px;
+}
+
+.cost-drivers {
+  margin-bottom: 30px;
+}
+
+.cost-drivers h3 {
+  margin-bottom: 15px;
+}
+
+.cost-drivers table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.cost-drivers th,
+.cost-drivers td {
+  padding: 12px;
+  text-align: left;
+  border-bottom: 1px solid #ddd;
+}
+
+.cost-drivers th {
+  background: #f8f9fa;
+  font-weight: 600;
+}
+
+.anomalies {
+  margin-bottom: 20px;
+}
+
+.anomalies h3 {
+  margin-bottom: 15px;
+}
+
+.anomaly-list {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.anomaly-item {
+  padding: 15px;
+  background: #fff3cd;
+  border-left: 4px solid #ffc107;
+  border-radius: 4px;
+}
+
+.anomaly-header {
+  margin-bottom: 10px;
+  font-size: 1.1em;
+}
+
+.anomaly-details {
+  display: flex;
+  gap: 20px;
+  margin-bottom: 10px;
+}
+
+.anomaly-details p {
+  margin: 0;
+}
+
+.variance {
+  color: #dc3545;
+  font-weight: 600;
+}
+
+.anomaly-description {
+  margin-top: 10px;
+  color: #666;
+}
