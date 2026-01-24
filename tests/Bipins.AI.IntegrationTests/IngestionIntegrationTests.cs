@@ -49,7 +49,7 @@ Machine learning is a subset of AI that enables systems to learn from data.
             await Task.Delay(1000);
 
             // Query
-            var retrieveRequest = new RetrieveRequest("machine learning", TopK: 3);
+            var retrieveRequest = new RetrieveRequest("machine learning", "test-tenant", TopK: 3);
             var retrieved = await retriever.RetrieveAsync(retrieveRequest);
 
             Assert.True(retrieved.Chunks.Count > 0);

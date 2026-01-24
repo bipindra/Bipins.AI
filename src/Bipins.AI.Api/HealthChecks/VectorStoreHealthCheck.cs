@@ -24,8 +24,11 @@ public class VectorStoreHealthCheck : IHealthCheck
         try
         {
             // Try to query with a dummy vector to check connectivity
+            // Use "default" tenant for health check
             var dummyVector = new float[1536].AsMemory();
-            var queryRequest = new VectorQueryRequest(dummyVector, TopK: 1);
+            var tenantFilter = new VectorFilterPredicate(
+                new FilterPredicate("tenantId", FilterOperator.Eq, "default"));
+            var queryRequest = new VectorQueryRequest(dummyVector, TopK: 1, "default", tenantFilter);
             await _vectorStore.QueryAsync(queryRequest, cancellationToken);
             
             return HealthCheckResult.Healthy("Vector store is accessible");

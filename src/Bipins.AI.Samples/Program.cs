@@ -6,8 +6,8 @@ using Bipins.AI.Core.Contracts;
 using Bipins.AI.Core.Ingestion;
 using Bipins.AI.Core.Models;
 using Bipins.AI.Core.Rag;
-using Bipins.AI.Connectors.Llm.OpenAI;
-using Bipins.AI.Connectors.Vector.Qdrant;
+using Bipins.AI.Providers.OpenAI;
+using Bipins.AI.Vectors.Qdrant;
 using Bipins.AI.Ingestion;
 using Bipins.AI.Runtime;
 using Bipins.AI.Runtime.Rag;
@@ -101,7 +101,7 @@ try
     var query = "What is machine learning?";
     logger.LogInformation("Query: {Query}", query);
 
-    var retrieveRequest = new RetrieveRequest(query, TopK: 3);
+    var retrieveRequest = new RetrieveRequest(query, "default", TopK: 3);
     var retrieved = await retriever.RetrieveAsync(retrieveRequest);
 
     logger.LogInformation("Retrieved {Count} chunks:", retrieved.Chunks.Count);

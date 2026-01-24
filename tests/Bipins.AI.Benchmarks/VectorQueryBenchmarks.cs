@@ -32,7 +32,8 @@ public class VectorQueryBenchmarks
             
             _vectors.Add(new VectorRecord(
                 Id: $"vector_{i}",
-                Vector: vector,
+                Vector: new ReadOnlyMemory<float>(vector),
+                Text: $"Text for vector {i}",
                 Metadata: new Dictionary<string, object> { { "index", i } }));
         }
 
@@ -51,7 +52,7 @@ public class VectorQueryBenchmarks
             .Select(v => new
             {
                 Record = v,
-                Score = CosineSimilarity(_queryVector, v.Vector)
+                Score = CosineSimilarity(_queryVector, v.Vector.Span.ToArray())
             })
             .OrderByDescending(x => x.Score)
             .Take(10)
@@ -66,7 +67,7 @@ public class VectorQueryBenchmarks
             .Select(v => new
             {
                 Record = v,
-                Score = CosineSimilarity(_queryVector, v.Vector)
+                Score = CosineSimilarity(_queryVector, v.Vector.Span.ToArray())
             })
             .OrderByDescending(x => x.Score)
             .Take(10)
@@ -90,7 +91,8 @@ public class VectorQueryBenchmarks
             
             vectors.Add(new VectorRecord(
                 Id: $"vector_{i}",
-                Vector: vector,
+                Vector: new ReadOnlyMemory<float>(vector),
+                Text: $"Text for vector {i}",
                 Metadata: new Dictionary<string, object> { { "index", i } }));
         }
 
@@ -98,7 +100,7 @@ public class VectorQueryBenchmarks
             .Select(v => new
             {
                 Record = v,
-                Score = CosineSimilarity(_queryVector, v.Vector)
+                Score = CosineSimilarity(_queryVector, v.Vector.Span.ToArray())
             })
             .OrderByDescending(x => x.Score)
             .Take(10)

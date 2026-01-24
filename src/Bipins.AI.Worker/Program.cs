@@ -1,8 +1,8 @@
 using Bipins.AI.Core;
 using Bipins.AI.Core.Configuration;
 using Bipins.AI.Core.DependencyInjection;
-using Bipins.AI.Connectors.Llm.OpenAI;
-using Bipins.AI.Connectors.Vector.Qdrant;
+using Bipins.AI.Providers.OpenAI;
+using Bipins.AI.Vectors.Qdrant;
 using Bipins.AI.Ingestion;
 using Bipins.AI.Runtime;
 using Bipins.AI.Runtime.Rag;

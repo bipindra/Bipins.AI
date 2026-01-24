@@ -44,11 +44,9 @@ public class ChunkingBenchmarks
     public async Task FixedSizeChunking(int textSize)
     {
         var text = GenerateText(textSize);
-        var options = new ChunkOptions
-        {
-            MaxChunkSize = 500,
-            Overlap = 50
-        };
+        var options = new ChunkOptions(
+            MaxSize: 500,
+            Overlap: 50);
         await _fixedSizeStrategy.ChunkAsync(text, options);
     }
 
@@ -59,11 +57,9 @@ public class ChunkingBenchmarks
     public async Task SentenceAwareChunking(int textSize)
     {
         var text = GenerateText(textSize);
-        var options = new ChunkOptions
-        {
-            MaxChunkSize = 500,
-            Overlap = 50
-        };
+        var options = new ChunkOptions(
+            MaxSize: 500,
+            Overlap: 50);
         await _sentenceStrategy.ChunkAsync(text, options);
     }
 
@@ -74,22 +70,18 @@ public class ChunkingBenchmarks
     public async Task ParagraphChunking(int textSize)
     {
         var text = GenerateText(textSize);
-        var options = new ChunkOptions
-        {
-            MaxChunkSize = 500,
-            Overlap = 50
-        };
+        var options = new ChunkOptions(
+            MaxSize: 500,
+            Overlap: 50);
         await _paragraphStrategy.ChunkAsync(text, options);
     }
 
     [Benchmark]
     public async Task MarkdownAwareChunking()
     {
-        var options = new ChunkOptions
-        {
-            MaxChunkSize = 500,
-            Overlap = 50
-        };
+        var options = new ChunkOptions(
+            MaxSize: 500,
+            Overlap: 50);
         await _markdownStrategy.ChunkAsync(_markdownText, options);
     }
 

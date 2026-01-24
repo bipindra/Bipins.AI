@@ -124,10 +124,25 @@ public class DefaultIndexer : IIndexer
                     // Query to get IDs of old versions
                     // Use a dummy vector for filtering (dimension 1536 is common for OpenAI embeddings)
                     var dummyVector = new float[1536].AsMemory();
+                    
+                    // Ensure tenant filter is included
+                    var tenantFilter = new VectorFilterPredicate(
+                        new FilterPredicate("tenantId", FilterOperator.Eq, options.TenantId));
+                    VectorFilter combinedFilter;
+                    if (queryFilter != null)
+                    {
+                        combinedFilter = new VectorFilterAnd(new[] { tenantFilter, queryFilter });
+                    }
+                    else
+                    {
+                        combinedFilter = tenantFilter;
+                    }
+                    
                     var queryRequest = new VectorQueryRequest(
                         dummyVector,
                         TopK: 10000, // Large number to get all matches
-                        queryFilter,
+                        options.TenantId,
+                        combinedFilter,
                         options.CollectionName);
                     
                     var queryResponse = await _vectorStore.QueryAsync(queryRequest, cancellationToken);

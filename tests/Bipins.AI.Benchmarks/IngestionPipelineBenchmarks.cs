@@ -123,13 +123,14 @@ public class IngestionPipelineBenchmarks
     private class MockIndexer : IIndexer
     {
         public Task<IndexResult> IndexAsync(
-            IReadOnlyList<Chunk> chunks,
+            IEnumerable<Chunk> chunks,
             IndexOptions options,
             CancellationToken cancellationToken = default)
         {
+            var chunkList = chunks.ToList();
             return Task.FromResult(new IndexResult(
-                ChunksIndexed: chunks.Count,
-                VectorsCreated: chunks.Count,
+                ChunksIndexed: chunkList.Count,
+                VectorsCreated: chunkList.Count,
                 Errors: null));
         }
     }

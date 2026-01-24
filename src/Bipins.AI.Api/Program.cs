@@ -8,8 +8,8 @@ using Bipins.AI.Core.Contracts;
 using Bipins.AI.Core.Ingestion;
 using Bipins.AI.Core.Models;
 using Bipins.AI.Core.Rag;
-using Bipins.AI.Connectors.Llm.OpenAI;
-using Bipins.AI.Connectors.Vector.Qdrant;
+using Bipins.AI.Providers.OpenAI;
+using Bipins.AI.Vectors.Qdrant;
 using Bipins.AI.Ingestion;
 using Bipins.AI.Runtime;
 using Bipins.AI.Api.Middleware;
@@ -534,6 +534,7 @@ app.MapPost("/v1/chat/stream", async (
         // Retrieve relevant chunks (RAG)
         var retrieveRequest = new RetrieveRequest(
             messages.Last().Content,
+            tenantId,
             TopK: 5);
 
         var retrieved = await retriever.RetrieveAsync(retrieveRequest, context.RequestAborted);
@@ -669,6 +670,7 @@ app.MapPost("/v1/chat", async (
         // Retrieve relevant chunks (RAG)
         var retrieveRequest = new RetrieveRequest(
             messages.Last().Content,
+            tenantId,
             TopK: 5);
 
         var retrieved = await retriever.RetrieveAsync(retrieveRequest, context.RequestAborted);
@@ -795,7 +797,7 @@ app.MapPost("/v1/query", async (
         ? topKProp.GetInt32()
         : 5;
 
-    var retrieveRequest = new RetrieveRequest(query, TopK: topK);
+    var retrieveRequest = new RetrieveRequest(query, tenantId, TopK: topK);
     var result = await retriever.RetrieveAsync(retrieveRequest, context.RequestAborted);
 
     var output = new AiOutputEnvelope(
@@ -1160,3 +1162,40 @@ app.MapGet("/v1/documents/{docId}/versions/{versionId}", async (
 .WithOpenApi();
 
 app.Run();
+
+static string GetProviderFromModelId(string? modelId)
+{
+    if (string.IsNullOrEmpty(modelId))
+    {
+        return "Unknown";
+    }
+
+    // Determine provider based on model ID patterns
+    if (modelId.StartsWith("gpt-", StringComparison.OrdinalIgnoreCase) ||
+        modelId.StartsWith("text-", StringComparison.OrdinalIgnoreCase))
+    {
+        return "OpenAI";
+    }
+
+    if (modelId.Contains("claude", StringComparison.OrdinalIgnoreCase) ||
+        modelId.StartsWith("anthropic", StringComparison.OrdinalIgnoreCase))
+    {
+        return "Anthropic";
+    }
+
+    if (modelId.Contains("azure", StringComparison.OrdinalIgnoreCase) ||
+        modelId.Contains("gpt-35", StringComparison.OrdinalIgnoreCase) ||
+        modelId.Contains("gpt-4", StringComparison.OrdinalIgnoreCase))
+    {
+        return "AzureOpenAI";
+    }
+
+    if (modelId.Contains("bedrock", StringComparison.OrdinalIgnoreCase) ||
+        modelId.Contains("amazon", StringComparison.OrdinalIgnoreCase) ||
+        modelId.StartsWith("anthropic.claude", StringComparison.OrdinalIgnoreCase))
+    {
+        return "Bedrock";
+    }
+
+    return "Unknown";
+}

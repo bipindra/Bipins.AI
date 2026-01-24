@@ -44,6 +44,7 @@ public class VectorStoreDocumentVersionManager : IDocumentVersionManager
             var queryRequest = new VectorQueryRequest(
                 dummyVector,
                 TopK: 10000, // Large number to get all matches
+                tenantId,
                 filter,
                 collectionName);
 
@@ -129,6 +130,7 @@ public class VectorStoreDocumentVersionManager : IDocumentVersionManager
             var queryRequest = new VectorQueryRequest(
                 dummyVector,
                 TopK: 10000,
+                tenantId,
                 filter,
                 collectionName);
 
