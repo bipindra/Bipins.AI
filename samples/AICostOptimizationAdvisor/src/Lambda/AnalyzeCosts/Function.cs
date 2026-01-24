@@ -1,12 +1,15 @@
 using Amazon.Lambda.Core;
 using Amazon.Lambda.APIGatewayEvents;
 using Amazon.Lambda.Serialization.SystemTextJson;
-using Amazon.BedrockRuntime;
 using Amazon.DynamoDBv2;
 using Amazon.DynamoDBv2.Model;
 using System.Text.Json;
 using AICostOptimizationAdvisor.Shared.Models;
 using AICostOptimizationAdvisor.Shared.Services;
+using Bipins.AI.Core.Models;
+using Bipins.AI.Providers.Bedrock;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 [assembly: LambdaSerializer(typeof(DefaultLambdaJsonSerializer))]
 
@@ -20,9 +23,37 @@ public class Function
 
     public Function()
     {
-        var bedrockClient = new AmazonBedrockRuntimeClient();
+        // Configure Bedrock options from environment variables
+        var region = Environment.GetEnvironmentVariable("AWS_REGION") ?? "us-east-1";
         var modelId = Environment.GetEnvironmentVariable("BEDROCK_MODEL_ID") ?? "anthropic.claude-3-sonnet-20240229-v1:0";
-        _bedrockAnalysisService = new BedrockAnalysisService(bedrockClient, modelId);
+        
+        var bedrockOptions = new BedrockOptions
+        {
+            Region = region,
+            DefaultModelId = modelId,
+            AccessKeyId = Environment.GetEnvironmentVariable("AWS_ACCESS_KEY_ID"),
+            SecretAccessKey = Environment.GetEnvironmentVariable("AWS_SECRET_ACCESS_KEY")
+        };
+
+        // Create logger (Lambda provides ILogger via context, but we need one for initialization)
+        var loggerFactory = LoggerFactory.Create(builder => builder.AddConsole());
+        var logger = loggerFactory.CreateLogger<BedrockChatModel>();
+        var streamingLogger = loggerFactory.CreateLogger<BedrockChatModelStreaming>();
+
+        // Create BedrockChatModel and BedrockChatModelStreaming using platform-agnostic interfaces
+        var optionsWrapper = Options.Create(bedrockOptions);
+        var chatModel = new BedrockChatModel(optionsWrapper, logger);
+        var chatModelStreaming = new BedrockChatModelStreaming(optionsWrapper, streamingLogger);
+
+        // Create analysis service with IChatModel and IChatModelStreaming (Bipins.AI platform-agnostic interfaces)
+        // Note: IVectorStore and IEmbeddingModel are optional - can be added if vector storage is needed
+        _bedrockAnalysisService = new BedrockAnalysisService(
+            chatModel, 
+            modelId, 
+            chatModelStreaming: chatModelStreaming);
+        
+        // Note: DynamoDB is used for storage (not an AI service), so AWS SDK is used directly.
+        // Bipins.AI only provides abstractions for AI/LLM and vector database services.
         _dynamoDbClient = new AmazonDynamoDBClient();
         _tableName = Environment.GetEnvironmentVariable("COST_ANALYSES_TABLE") ?? "CostAnalyses";
     }

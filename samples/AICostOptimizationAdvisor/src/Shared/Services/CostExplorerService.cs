@@ -6,6 +6,8 @@ namespace AICostOptimizationAdvisor.Shared.Services;
 
 /// <summary>
 /// Service for interacting with AWS Cost Explorer API.
+/// Note: Cost Explorer is not an AI/vector service, so it uses AWS SDK directly.
+/// Bipins.AI only provides abstractions for AI/LLM and vector database services.
 /// </summary>
 public class CostExplorerService : ICostExplorerService
 {

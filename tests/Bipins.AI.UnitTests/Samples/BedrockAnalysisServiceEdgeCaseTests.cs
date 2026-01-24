@@ -1,9 +1,7 @@
-using Amazon.BedrockRuntime;
-using Amazon.BedrockRuntime.Model;
 using AICostOptimizationAdvisor.Shared.Models;
 using AICostOptimizationAdvisor.Shared.Services;
+using Bipins.AI.Core.Models;
 using Moq;
-using System.Text;
 using System.Text.Json;
 using Xunit;
 
@@ -11,13 +9,13 @@ namespace Bipins.AI.UnitTests.Samples;
 
 public class BedrockAnalysisServiceEdgeCaseTests
 {
-    private readonly Mock<IAmazonBedrockRuntime> _mockBedrock;
+    private readonly Mock<IChatModel> _mockChatModel;
     private readonly BedrockAnalysisService _service;
 
     public BedrockAnalysisServiceEdgeCaseTests()
     {
-        _mockBedrock = new Mock<IAmazonBedrockRuntime>();
-        _service = new BedrockAnalysisService(_mockBedrock.Object, "anthropic.claude-3-sonnet-20240229-v1:0");
+        _mockChatModel = new Mock<IChatModel>();
+        _service = new BedrockAnalysisService(_mockChatModel.Object, "anthropic.claude-3-sonnet-20240229-v1:0");
     }
 
     [Fact]
@@ -32,16 +30,11 @@ public class BedrockAnalysisServiceEdgeCaseTests
         };
 
         var analysisJson = @"{""costDrivers"":[],""anomalies"":[],""suggestions"":[],""summary"":""No costs found""}";
-        var bedrockResponseJson = new { content = new[] { new { text = analysisJson } } };
+        var chatResponse = new ChatResponse(analysisJson);
 
-        var bedrockResponse = new InvokeModelResponse
-        {
-            Body = new MemoryStream(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(bedrockResponseJson)))
-        };
-
-        _mockBedrock
-            .Setup(x => x.InvokeModelAsync(It.IsAny<InvokeModelRequest>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(bedrockResponse);
+        _mockChatModel
+            .Setup(x => x.GenerateAsync(It.IsAny<ChatRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(chatResponse);
 
         // Act
         var result = await _service.AnalyzeCostsAsync(costData);
@@ -64,23 +57,18 @@ public class BedrockAnalysisServiceEdgeCaseTests
         };
 
         var analysisJson = @"{""costDrivers"":[],""anomalies"":[],""suggestions"":[],""summary"":""Test""}";
-        var bedrockResponseJson = new { content = new[] { new { text = analysisJson } } };
+        var chatResponse = new ChatResponse(analysisJson);
 
-        var bedrockResponse = new InvokeModelResponse
-        {
-            Body = new MemoryStream(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(bedrockResponseJson)))
-        };
-
-        _mockBedrock
-            .Setup(x => x.InvokeModelAsync(It.Is<InvokeModelRequest>(r => r.ModelId == "anthropic.claude-3-sonnet-20240229-v1:0"), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(bedrockResponse);
+        _mockChatModel
+            .Setup(x => x.GenerateAsync(It.Is<ChatRequest>(r => r.Metadata != null && r.Metadata.ContainsKey("modelId") && r.Metadata["modelId"].ToString() == "anthropic.claude-3-sonnet-20240229-v1:0"), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(chatResponse);
 
         // Act
         await _service.AnalyzeCostsAsync(costData, null);
 
         // Assert
-        _mockBedrock.Verify(x => x.InvokeModelAsync(
-            It.Is<InvokeModelRequest>(r => r.ModelId == "anthropic.claude-3-sonnet-20240229-v1:0"),
+        _mockChatModel.Verify(x => x.GenerateAsync(
+            It.Is<ChatRequest>(r => r.Metadata != null && r.Metadata.ContainsKey("modelId") && r.Metadata["modelId"].ToString() == "anthropic.claude-3-sonnet-20240229-v1:0"),
             It.IsAny<CancellationToken>()), Times.Once);
     }
 
@@ -96,16 +84,11 @@ public class BedrockAnalysisServiceEdgeCaseTests
         };
 
         var partialJson = @"{""costDrivers"":[],""anomalies"":[]"; // Incomplete JSON
-        var bedrockResponseJson = new { content = new[] { new { text = partialJson } } };
+        var chatResponse = new ChatResponse(partialJson);
 
-        var bedrockResponse = new InvokeModelResponse
-        {
-            Body = new MemoryStream(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(bedrockResponseJson)))
-        };
-
-        _mockBedrock
-            .Setup(x => x.InvokeModelAsync(It.IsAny<InvokeModelRequest>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(bedrockResponse);
+        _mockChatModel
+            .Setup(x => x.GenerateAsync(It.IsAny<ChatRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(chatResponse);
 
         // Act
         var result = await _service.AnalyzeCostsAsync(costData);
@@ -133,16 +116,11 @@ public class BedrockAnalysisServiceEdgeCaseTests
         };
 
         var analysisJson = @"{""costDrivers"":[],""anomalies"":[],""suggestions"":[],""summary"":""Large dataset analyzed""}";
-        var bedrockResponseJson = new { content = new[] { new { text = analysisJson } } };
+        var chatResponse = new ChatResponse(analysisJson);
 
-        var bedrockResponse = new InvokeModelResponse
-        {
-            Body = new MemoryStream(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(bedrockResponseJson)))
-        };
-
-        _mockBedrock
-            .Setup(x => x.InvokeModelAsync(It.IsAny<InvokeModelRequest>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(bedrockResponse);
+        _mockChatModel
+            .Setup(x => x.GenerateAsync(It.IsAny<ChatRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(chatResponse);
 
         // Act
         var result = await _service.AnalyzeCostsAsync(costData);
@@ -150,8 +128,8 @@ public class BedrockAnalysisServiceEdgeCaseTests
         // Assert
         Assert.NotNull(result);
         Assert.Equal(50500m, result.TotalCost);
-        _mockBedrock.Verify(x => x.InvokeModelAsync(
-            It.Is<InvokeModelRequest>(r => r.Body != null && r.Body.Length > 0),
+        _mockChatModel.Verify(x => x.GenerateAsync(
+            It.IsAny<ChatRequest>(),
             It.IsAny<CancellationToken>()), Times.Once);
     }
 
@@ -166,14 +144,11 @@ public class BedrockAnalysisServiceEdgeCaseTests
             DateRange = "2024-01-01 to 2024-01-31"
         };
 
-        var bedrockResponse = new InvokeModelResponse
-        {
-            Body = new MemoryStream(Encoding.UTF8.GetBytes(@"{""content"":null}"))
-        };
+        var chatResponse = new ChatResponse("");
 
-        _mockBedrock
-            .Setup(x => x.InvokeModelAsync(It.IsAny<InvokeModelRequest>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(bedrockResponse);
+        _mockChatModel
+            .Setup(x => x.GenerateAsync(It.IsAny<ChatRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(chatResponse);
 
         // Act & Assert
         await Assert.ThrowsAsync<InvalidOperationException>(() => _service.AnalyzeCostsAsync(costData));
@@ -190,16 +165,11 @@ public class BedrockAnalysisServiceEdgeCaseTests
             DateRange = "2024-01-01 to 2024-01-31"
         };
 
-        var bedrockResponseJson = new { content = new[] { new { text = "" } } };
+        var chatResponse = new ChatResponse("");
 
-        var bedrockResponse = new InvokeModelResponse
-        {
-            Body = new MemoryStream(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(bedrockResponseJson)))
-        };
-
-        _mockBedrock
-            .Setup(x => x.InvokeModelAsync(It.IsAny<InvokeModelRequest>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(bedrockResponse);
+        _mockChatModel
+            .Setup(x => x.GenerateAsync(It.IsAny<ChatRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(chatResponse);
 
         // Act
         var result = await _service.AnalyzeCostsAsync(costData);

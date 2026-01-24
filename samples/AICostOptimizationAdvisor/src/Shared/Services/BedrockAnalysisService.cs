@@ -1,22 +1,32 @@
-using Amazon.BedrockRuntime;
-using Amazon.BedrockRuntime.Model;
-using System.Text;
+using Bipins.AI.Core.Models;
+using Bipins.AI.Core.Vector;
 using System.Text.Json;
 using AICostOptimizationAdvisor.Shared.Models;
 
 namespace AICostOptimizationAdvisor.Shared.Services;
 
 /// <summary>
-/// Service for analyzing cost data using AWS Bedrock.
+/// Service for analyzing cost data using Bipins.AI platform-agnostic interfaces (IChatModel, IChatModelStreaming, IVectorStore).
 /// </summary>
 public class BedrockAnalysisService : IBedrockAnalysisService
 {
-    private readonly IAmazonBedrockRuntime _bedrockClient;
+    private readonly IChatModel _chatModel;
+    private readonly IChatModelStreaming? _chatModelStreaming;
+    private readonly IVectorStore? _vectorStore;
+    private readonly IEmbeddingModel? _embeddingModel;
     private readonly string _defaultModelId;
 
-    public BedrockAnalysisService(IAmazonBedrockRuntime bedrockClient, string defaultModelId = "anthropic.claude-3-sonnet-20240229-v1:0")
+    public BedrockAnalysisService(
+        IChatModel chatModel,
+        string defaultModelId = "anthropic.claude-3-sonnet-20240229-v1:0",
+        IChatModelStreaming? chatModelStreaming = null,
+        IVectorStore? vectorStore = null,
+        IEmbeddingModel? embeddingModel = null)
     {
-        _bedrockClient = bedrockClient;
+        _chatModel = chatModel;
+        _chatModelStreaming = chatModelStreaming;
+        _vectorStore = vectorStore;
+        _embeddingModel = embeddingModel;
         _defaultModelId = defaultModelId;
     }
 
@@ -26,32 +36,132 @@ public class BedrockAnalysisService : IBedrockAnalysisService
         var analysisId = Guid.NewGuid().ToString();
 
         var prompt = BuildAnalysisPrompt(costData);
-        var requestBody = BuildBedrockRequest(prompt);
 
-        var request = new InvokeModelRequest
+        // Use platform-agnostic ChatRequest
+        var chatRequest = new ChatRequest(
+            Messages: new List<Message>
+            {
+                new Message(MessageRole.User, prompt)
+            },
+            MaxTokens: 4096,
+            Temperature: 0.7f,
+            Metadata: new Dictionary<string, object>
+            {
+                { "modelId", model }
+            }
+        );
+
+        var chatResponse = await _chatModel.GenerateAsync(chatRequest, cancellationToken);
+
+        if (string.IsNullOrEmpty(chatResponse.Content))
         {
-            ModelId = model,
-            Body = new MemoryStream(Encoding.UTF8.GetBytes(requestBody)),
-            ContentType = "application/json",
-            Accept = "application/json"
-        };
-
-        var response = await _bedrockClient.InvokeModelAsync(request, cancellationToken);
-
-        using var reader = new StreamReader(response.Body);
-        var responseJson = await reader.ReadToEndAsync(cancellationToken);
-
-        var bedrockResponse = JsonSerializer.Deserialize<BedrockResponse>(responseJson, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-
-        if (bedrockResponse == null || bedrockResponse.Content == null || bedrockResponse.Content.Count == 0)
-        {
-            throw new InvalidOperationException("Invalid response from Bedrock");
+            throw new InvalidOperationException("Invalid response from AI model");
         }
 
-        var content = bedrockResponse.Content[0].Text ?? string.Empty;
-        var analysis = ParseAnalysisResponse(content, analysisId, costData);
+        var analysis = ParseAnalysisResponse(chatResponse.Content, analysisId, costData);
 
         return analysis;
+    }
+
+    public async IAsyncEnumerable<CostAnalysis> AnalyzeCostsStreamAsync(GetCostDataResponse costData, string? modelId = null, [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        if (_chatModelStreaming == null)
+        {
+            throw new InvalidOperationException("Streaming is not available. IChatModelStreaming was not provided.");
+        }
+
+        var model = modelId ?? _defaultModelId;
+        var analysisId = Guid.NewGuid().ToString();
+        var prompt = BuildAnalysisPrompt(costData);
+
+        // Use platform-agnostic ChatRequest for streaming
+        var chatRequest = new ChatRequest(
+            Messages: new List<Message>
+            {
+                new Message(MessageRole.User, prompt)
+            },
+            MaxTokens: 4096,
+            Temperature: 0.7f,
+            Metadata: new Dictionary<string, object>
+            {
+                { "modelId", model }
+            }
+        );
+
+        var accumulatedContent = new System.Text.StringBuilder();
+        await foreach (var chunk in _chatModelStreaming.GenerateStreamAsync(chatRequest, cancellationToken))
+        {
+            if (!string.IsNullOrEmpty(chunk.Content))
+            {
+                accumulatedContent.Append(chunk.Content);
+            }
+
+            // If this is the final chunk, parse and return the complete analysis
+            if (chunk.IsComplete)
+            {
+                var fullContent = accumulatedContent.ToString();
+                if (!string.IsNullOrEmpty(fullContent))
+                {
+                    var analysis = ParseAnalysisResponse(fullContent, analysisId, costData);
+                    
+                    // Optionally store in vector store for future RAG queries
+                    if (_vectorStore != null && _embeddingModel != null)
+                    {
+                        await StoreAnalysisInVectorStoreAsync(analysis, cancellationToken);
+                    }
+                    
+                    yield return analysis;
+                }
+            }
+        }
+    }
+
+    private async Task StoreAnalysisInVectorStoreAsync(CostAnalysis analysis, CancellationToken cancellationToken)
+    {
+        if (_vectorStore == null || _embeddingModel == null)
+        {
+            return;
+        }
+
+        try
+        {
+            // Create a text representation of the analysis for embedding
+            var analysisText = $"{analysis.Summary} " +
+                string.Join(" ", analysis.CostDrivers.Select(d => $"{d.Service} {d.Description}")) +
+                string.Join(" ", analysis.Suggestions.Select(s => $"{s.Category} {s.Description}"));
+
+            // Generate embedding
+            var embeddingRequest = new EmbeddingRequest(new[] { analysisText });
+            var embeddingResponse = await _embeddingModel.EmbedAsync(embeddingRequest, cancellationToken);
+
+            if (embeddingResponse.Vectors.Count > 0)
+            {
+                var vector = embeddingResponse.Vectors[0];
+                var vectorRecord = new VectorRecord(
+                    Id: analysis.AnalysisId,
+                    Vector: vector,
+                    Text: analysisText,
+                    Metadata: new Dictionary<string, object>
+                    {
+                        { "analysisId", analysis.AnalysisId },
+                        { "dateRange", analysis.DateRange },
+                        { "totalCost", analysis.TotalCost },
+                        { "createdAt", analysis.CreatedAt.ToString("O") },
+                        { "summary", analysis.Summary }
+                    });
+
+                var upsertRequest = new VectorUpsertRequest(
+                    Records: new[] { vectorRecord },
+                    CollectionName: "cost-analyses");
+
+                await _vectorStore.UpsertAsync(upsertRequest, cancellationToken);
+            }
+        }
+        catch (Exception ex)
+        {
+            // Log but don't fail - vector storage is optional
+            Console.WriteLine($"Error storing analysis in vector store: {ex.Message}");
+        }
     }
 
     private string BuildAnalysisPrompt(GetCostDataResponse costData)
@@ -102,25 +212,6 @@ Format your response as JSON with the following structure:
 }}";
     }
 
-    private string BuildBedrockRequest(string prompt)
-    {
-        var request = new
-        {
-            anthropic_version = "bedrock-2023-05-31",
-            max_tokens = 4096,
-            messages = new[]
-            {
-                new
-                {
-                    role = "user",
-                    content = prompt
-                }
-            }
-        };
-
-        return JsonSerializer.Serialize(request, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
-    }
-
     private CostAnalysis ParseAnalysisResponse(string content, string analysisId, GetCostDataResponse costData)
     {
         // Extract JSON from markdown code blocks if present
@@ -168,16 +259,6 @@ Format your response as JSON with the following structure:
                 Summary = "Analysis completed but response format was unexpected. Please review the raw response."
             };
         }
-    }
-
-    private class BedrockResponse
-    {
-        public List<BedrockContent> Content { get; set; } = new();
-    }
-
-    private class BedrockContent
-    {
-        public string? Text { get; set; }
     }
 
     private class AnalysisJsonResponse
