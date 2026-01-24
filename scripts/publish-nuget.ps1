@@ -1,9 +1,18 @@
-# PowerShell script to publish Bipins.AI packages to NuGet.org
-# Usage: .\scripts\publish-nuget.ps1 [-ApiKey <your-api-key>] [-Version <version>] [-SkipBuild]
+# PowerShell script to publish Bipins.AI packages to a NuGet package server
+# Usage: .\scripts\publish-nuget.ps1 [-ApiKey <your-api-key>] [-SourceUrl <package-server-url>] [-Version <version>] [-SkipBuild] [-DryRun]
 
 param(
     [Parameter(Mandatory=$false)]
-    [string]$ApiKey = $env:NUGET_API_KEY,
+    [string]$ApiKey = $env:PACKAGE_API_KEY,
+    
+    [Parameter(Mandatory=$false)]
+    [string]$SourceUrl = $env:PACKAGE_SOURCE_URL,
+    
+    [Parameter(Mandatory=$false)]
+    [string]$SourceName = $env:PACKAGE_SOURCE_NAME,
+    
+    [Parameter(Mandatory=$false)]
+    [string]$SourceUsername = $env:PACKAGE_SOURCE_USERNAME,
     
     [Parameter(Mandatory=$false)]
     [string]$Version = "",
@@ -17,13 +26,26 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-Write-Host "=== Bipins.AI NuGet Publishing Script ===" -ForegroundColor Cyan
+Write-Host "=== Bipins.AI Package Publishing Script ===" -ForegroundColor Cyan
 
-# Check if API key is provided
-if ([string]::IsNullOrWhiteSpace($ApiKey)) {
-    Write-Host "ERROR: NuGet API key is required." -ForegroundColor Red
-    Write-Host "Provide it via -ApiKey parameter or NUGET_API_KEY environment variable." -ForegroundColor Yellow
-    Write-Host "Get your API key from: https://www.nuget.org/account/apikeys" -ForegroundColor Yellow
+# Set default source URL if not provided
+if ([string]::IsNullOrWhiteSpace($SourceUrl)) {
+    $SourceUrl = "https://api.nuget.org/v3/index.json"
+    Write-Host "Using default NuGet.org source" -ForegroundColor Gray
+} else {
+    Write-Host "Using package source: $SourceUrl" -ForegroundColor Green
+}
+
+# Set default source name if not provided
+if ([string]::IsNullOrWhiteSpace($SourceName)) {
+    $SourceName = "default"
+}
+
+# Check if API key is provided (unless dry run)
+if ([string]::IsNullOrWhiteSpace($ApiKey) -and -not $DryRun) {
+    Write-Host "ERROR: Package API key is required." -ForegroundColor Red
+    Write-Host "Provide it via -ApiKey parameter or PACKAGE_API_KEY environment variable." -ForegroundColor Yellow
+    Write-Host "For NuGet.org, get your API key from: https://www.nuget.org/account/apikeys" -ForegroundColor Yellow
     exit 1
 }
 
@@ -118,24 +140,53 @@ if ($packedFiles.Count -eq 0) {
 
 Write-Host "`nPacked $($packedFiles.Count) package(s)" -ForegroundColor Green
 
-# Publish to NuGet.org
+# Add custom source if needed (and not NuGet.org)
+if (-not $DryRun -and $SourceUrl -ne "https://api.nuget.org/v3/index.json" -and -not [string]::IsNullOrWhiteSpace($SourceUrl)) {
+    Write-Host "`nAdding package source: $SourceUrl" -ForegroundColor Cyan
+    
+    $addSourceArgs = @(
+        "nuget", "add", "source", $SourceUrl,
+        "--name", $SourceName
+    )
+    
+    if (-not [string]::IsNullOrWhiteSpace($ApiKey)) {
+        $addSourceArgs += "--password", $ApiKey
+    }
+    
+    if (-not [string]::IsNullOrWhiteSpace($SourceUsername)) {
+        $addSourceArgs += "--username", $SourceUsername
+    }
+    
+    $addSourceArgs += "--store-password-in-clear-text"
+    
+    dotnet $addSourceArgs 2>&1 | Out-Null
+}
+
+# Publish packages
 if ($DryRun) {
     Write-Host "`n=== DRY RUN MODE ===" -ForegroundColor Yellow
-    Write-Host "Would publish the following packages:" -ForegroundColor Yellow
+    Write-Host "Would publish the following packages to $SourceUrl:" -ForegroundColor Yellow
     foreach ($file in $packedFiles) {
         Write-Host "  - $file" -ForegroundColor Gray
     }
     Write-Host "`nTo actually publish, run without -DryRun flag" -ForegroundColor Yellow
 } else {
-    Write-Host "`nPublishing to NuGet.org..." -ForegroundColor Cyan
+    Write-Host "`nPublishing to $SourceUrl..." -ForegroundColor Cyan
     
     foreach ($nupkgFile in $packedFiles) {
         Write-Host "  Publishing $([System.IO.Path]::GetFileName($nupkgFile))..." -ForegroundColor Gray
         
-        dotnet nuget push $nupkgFile `
-            --api-key $ApiKey `
-            --source https://api.nuget.org/v3/index.json `
-            --skip-duplicate
+        $pushArgs = @(
+            "nuget", "push", $nupkgFile,
+            "--source", $SourceUrl,
+            "--skip-duplicate"
+        )
+        
+        if (-not [string]::IsNullOrWhiteSpace($ApiKey)) {
+            $pushArgs += "--api-key", $ApiKey
+        }
+        
+        dotnet $pushArgs
         
         if ($LASTEXITCODE -eq 0) {
             Write-Host "    ✓ Published successfully" -ForegroundColor Green
@@ -145,5 +196,9 @@ if ($DryRun) {
     }
     
     Write-Host "`n=== Publishing Complete ===" -ForegroundColor Green
-    Write-Host "View packages at: https://www.nuget.org/profiles/$env:USERNAME" -ForegroundColor Cyan
+    if ($SourceUrl -eq "https://api.nuget.org/v3/index.json") {
+        Write-Host "View packages at: https://www.nuget.org/profiles/$env:USERNAME" -ForegroundColor Cyan
+    } else {
+        Write-Host "Packages published to: $SourceUrl" -ForegroundColor Cyan
+    }
 }

@@ -7,8 +7,8 @@ on:
     branches: [ master, main, develop ]
   workflow_dispatch:
     inputs:
-      publish_to_nuget:
-        description: 'Publish packages to NuGet.org'
+      publish_packages:
+        description: 'Publish packages to configured package server'
         required: false
         default: 'false'
         type: boolean
@@ -61,10 +61,10 @@ jobs:
         name: codecov-umbrella
         fail_ci_if_error: false
 
-  publish-nuget:
+  publish-packages:
     needs: build-and-test
     runs-on: ubuntu-latest
-    if: github.event_name == 'workflow_dispatch' && github.event.inputs.publish_to_nuget == 'true' || (github.event_name == 'push' && github.ref == 'refs/heads/master' && contains(github.event.head_commit.message, '[publish-nuget]'))
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.publish_packages == 'true' || (github.event_name == 'push' && github.ref == 'refs/heads/master' && contains(github.event.head_commit.message, '[publish-packages]'))
     
     steps:
     - name: Checkout code
@@ -86,7 +86,49 @@ jobs:
     - name: Pack NuGet packages
       run: dotnet pack --no-build --configuration Release --output ./artifacts
     
-    - name: Publish to NuGet.org
-      run: dotnet nuget push ./artifacts/*.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
+    - name: Configure package source
+      id: package_source
+      run: |
+        if [ -n "${{ secrets.PACKAGE_SOURCE_URL }}" ]; then
+          echo "source=${{ secrets.PACKAGE_SOURCE_URL }}" >> $GITHUB_OUTPUT
+        else
+          echo "source=https://api.nuget.org/v3/index.json" >> $GITHUB_OUTPUT
+        fi
+        if [ -n "${{ secrets.PACKAGE_SOURCE_NAME }}" ]; then
+          echo "name=${{ secrets.PACKAGE_SOURCE_NAME }}" >> $GITHUB_OUTPUT
+        else
+          echo "name=default" >> $GITHUB_OUTPUT
+        fi
+    
+    - name: Add package source (if custom)
+      if: secrets.PACKAGE_SOURCE_URL != '' && secrets.PACKAGE_SOURCE_URL != 'https://api.nuget.org/v3/index.json'
+      run: |
+        dotnet nuget add source "${{ secrets.PACKAGE_SOURCE_URL }}" \
+          --name "${{ steps.package_source.outputs.name }}" \
+          --username "${{ secrets.PACKAGE_SOURCE_USERNAME }}" \
+          --password "${{ secrets.PACKAGE_API_KEY }}" \
+          --store-password-in-clear-text || true
+    
+    - name: Publish packages
+      run: |
+        PACKAGE_SOURCE="${{ steps.package_source.outputs.source }}"
+        API_KEY="${{ secrets.PACKAGE_API_KEY }}"
+        
+        if [ -z "$API_KEY" ]; then
+          echo "ERROR: PACKAGE_API_KEY secret is required"
+          exit 1
+        fi
+        
+        for nupkg in ./artifacts/*.nupkg; do
+          if [ -f "$nupkg" ]; then
+            echo "Publishing $(basename "$nupkg") to $PACKAGE_SOURCE..."
+            dotnet nuget push "$nupkg" \
+              --api-key "$API_KEY" \
+              --source "$PACKAGE_SOURCE" \
+              --skip-duplicate || echo "Failed to publish $(basename "$nupkg")"
+          fi
+        done
       env:
-        NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+        PACKAGE_API_KEY: ${{ secrets.PACKAGE_API_KEY }}
+        PACKAGE_SOURCE_URL: ${{ secrets.PACKAGE_SOURCE_URL }}
+        PACKAGE_SOURCE_USERNAME: ${{ secrets.PACKAGE_SOURCE_USERNAME }}

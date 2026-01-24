@@ -1,10 +1,13 @@
 #!/bin/bash
-# Bash script to publish Bipins.AI packages to NuGet.org
-# Usage: ./scripts/publish-nuget.sh [--api-key <your-api-key>] [--version <version>] [--skip-build] [--dry-run]
+# Bash script to publish Bipins.AI packages to a NuGet package server
+# Usage: ./scripts/publish-nuget.sh [--api-key <key>] [--source-url <url>] [--source-name <name>] [--source-username <username>] [--version <version>] [--skip-build] [--dry-run]
 
 set -e
 
-API_KEY="${NUGET_API_KEY:-}"
+API_KEY="${PACKAGE_API_KEY:-}"
+SOURCE_URL="${PACKAGE_SOURCE_URL:-}"
+SOURCE_NAME="${PACKAGE_SOURCE_NAME:-}"
+SOURCE_USERNAME="${PACKAGE_SOURCE_USERNAME:-}"
 VERSION=""
 SKIP_BUILD=false
 DRY_RUN=false
@@ -14,6 +17,18 @@ while [[ $# -gt 0 ]]; do
     case $1 in
         --api-key)
             API_KEY="$2"
+            shift 2
+            ;;
+        --source-url)
+            SOURCE_URL="$2"
+            shift 2
+            ;;
+        --source-name)
+            SOURCE_NAME="$2"
+            shift 2
+            ;;
+        --source-username)
+            SOURCE_USERNAME="$2"
             shift 2
             ;;
         --version)
@@ -30,19 +45,32 @@ while [[ $# -gt 0 ]]; do
             ;;
         *)
             echo "Unknown option: $1"
-            echo "Usage: $0 [--api-key <key>] [--version <version>] [--skip-build] [--dry-run]"
+            echo "Usage: $0 [--api-key <key>] [--source-url <url>] [--source-name <name>] [--source-username <username>] [--version <version>] [--skip-build] [--dry-run]"
             exit 1
             ;;
     esac
 done
 
-echo "=== Bipins.AI NuGet Publishing Script ==="
+echo "=== Bipins.AI Package Publishing Script ==="
+
+# Set default source URL if not provided
+if [ -z "$SOURCE_URL" ]; then
+    SOURCE_URL="https://api.nuget.org/v3/index.json"
+    echo "Using default NuGet.org source"
+else
+    echo "Using package source: $SOURCE_URL"
+fi
+
+# Set default source name if not provided
+if [ -z "$SOURCE_NAME" ]; then
+    SOURCE_NAME="default"
+fi
 
 # Check if API key is provided (unless dry run)
 if [ -z "$API_KEY" ] && [ "$DRY_RUN" = false ]; then
-    echo "ERROR: NuGet API key is required."
-    echo "Provide it via --api-key parameter or NUGET_API_KEY environment variable."
-    echo "Get your API key from: https://www.nuget.org/account/apikeys"
+    echo "ERROR: Package API key is required."
+    echo "Provide it via --api-key parameter or PACKAGE_API_KEY environment variable."
+    echo "For NuGet.org, get your API key from: https://www.nuget.org/account/apikeys"
     exit 1
 fi
 
@@ -131,11 +159,34 @@ fi
 echo ""
 echo "Packed $PACKED_COUNT package(s)"
 
-# Publish to NuGet.org
+# Add custom source if needed (and not NuGet.org)
+if [ "$DRY_RUN" = false ] && [ "$SOURCE_URL" != "https://api.nuget.org/v3/index.json" ] && [ -n "$SOURCE_URL" ]; then
+    echo ""
+    echo "Adding package source: $SOURCE_URL"
+    
+    ADD_SOURCE_ARGS=(
+        "nuget" "add" "source" "$SOURCE_URL"
+        "--name" "$SOURCE_NAME"
+    )
+    
+    if [ -n "$API_KEY" ]; then
+        ADD_SOURCE_ARGS+=("--password" "$API_KEY")
+    fi
+    
+    if [ -n "$SOURCE_USERNAME" ]; then
+        ADD_SOURCE_ARGS+=("--username" "$SOURCE_USERNAME")
+    fi
+    
+    ADD_SOURCE_ARGS+=("--store-password-in-clear-text")
+    
+    dotnet "${ADD_SOURCE_ARGS[@]}" 2>/dev/null || true
+fi
+
+# Publish packages
 if [ "$DRY_RUN" = true ]; then
     echo ""
     echo "=== DRY RUN MODE ==="
-    echo "Would publish the following packages:"
+    echo "Would publish the following packages to $SOURCE_URL:"
     ls -1 "$ARTIFACTS_DIR"/*.nupkg 2>/dev/null | while read -r file; do
         echo "  - $(basename "$file")"
     done
@@ -143,16 +194,23 @@ if [ "$DRY_RUN" = true ]; then
     echo "To actually publish, run without --dry-run flag"
 else
     echo ""
-    echo "Publishing to NuGet.org..."
+    echo "Publishing to $SOURCE_URL..."
     
     for nupkg_file in "$ARTIFACTS_DIR"/*.nupkg; do
         if [ -f "$nupkg_file" ]; then
             echo "  Publishing $(basename "$nupkg_file")..."
             
-            if dotnet nuget push "$nupkg_file" \
-                --api-key "$API_KEY" \
-                --source https://api.nuget.org/v3/index.json \
-                --skip-duplicate; then
+            PUSH_ARGS=(
+                "nuget" "push" "$nupkg_file"
+                "--source" "$SOURCE_URL"
+                "--skip-duplicate"
+            )
+            
+            if [ -n "$API_KEY" ]; then
+                PUSH_ARGS+=("--api-key" "$API_KEY")
+            fi
+            
+            if dotnet "${PUSH_ARGS[@]}"; then
                 echo "    ✓ Published successfully"
             else
                 echo "    ✗ Failed to publish"
@@ -162,5 +220,9 @@ else
     
     echo ""
     echo "=== Publishing Complete ==="
-    echo "View packages at: https://www.nuget.org/profiles/$USER"
+    if [ "$SOURCE_URL" = "https://api.nuget.org/v3/index.json" ]; then
+        echo "View packages at: https://www.nuget.org/profiles/$USER"
+    else
+        echo "Packages published to: $SOURCE_URL"
+    fi
 fi
