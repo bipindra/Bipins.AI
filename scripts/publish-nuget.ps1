@@ -155,7 +155,7 @@ if (-not $DryRun -and $SourceUrl -ne "https://api.nuget.org/v3/index.json" -and 
 # Publish packages
 if ($DryRun) {
     Write-Host "`n=== DRY RUN MODE ===" -ForegroundColor Yellow
-    Write-Host "Would publish the following packages to $SourceUrl:" -ForegroundColor Yellow
+    Write-Host "Would publish the following packages to ${SourceUrl}:" -ForegroundColor Yellow
     foreach ($file in $packedFiles) {
         Write-Host "  - $file" -ForegroundColor Gray
     }
