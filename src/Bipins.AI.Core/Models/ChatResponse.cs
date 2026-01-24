@@ -1,5 +1,7 @@
 namespace Bipins.AI.Core.Models;
 
+using System.Text.Json;
+
 /// <summary>
 /// Response from a chat completion.
 /// </summary>
@@ -9,10 +11,12 @@ namespace Bipins.AI.Core.Models;
 /// <param name="ModelId">The model identifier used.</param>
 /// <param name="FinishReason">Reason why generation finished.</param>
 /// <param name="Safety">Optional safety information.</param>
+/// <param name="StructuredOutput">Optional parsed structured output (JSON element).</param>
 public record ChatResponse(
     string Content,
     IReadOnlyList<ToolCall>? ToolCalls = null,
     Usage? Usage = null,
     string? ModelId = null,
     string? FinishReason = null,
-    SafetyInfo? Safety = null);
+    SafetyInfo? Safety = null,
+    JsonElement? StructuredOutput = null);

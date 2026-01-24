@@ -489,6 +489,28 @@ app.MapPost("/v1/chat", async (
         var chatModel = await router.SelectChatModelAsync(tenantId, augmentedRequest, context.RequestAborted);
         var response = await chatModel.GenerateAsync(augmentedRequest, context.RequestAborted);
 
+        // Parse structured output if requested
+        JsonElement? parsedStructuredOutput = null;
+        if (chatRequest.StructuredOutput != null && !string.IsNullOrEmpty(response.Content))
+        {
+            parsedStructuredOutput = StructuredOutputHelper.ExtractStructuredOutput(response.Content);
+            if (parsedStructuredOutput.HasValue)
+            {
+                var validated = StructuredOutputHelper.ParseAndValidate(
+                    response.Content,
+                    chatRequest.StructuredOutput.Schema);
+                if (validated.HasValue)
+                {
+                    parsedStructuredOutput = validated;
+                }
+            }
+        }
+
+        // Update response with structured output if parsed
+        var finalResponse = parsedStructuredOutput.HasValue
+            ? response with { StructuredOutput = parsedStructuredOutput }
+            : response;
+
         // Build citations
         var citations = retrieved.Chunks.Select(c => new Citation(
             c.SourceUri,
@@ -508,7 +530,7 @@ app.MapPost("/v1/chat", async (
         var output = new AiOutputEnvelope(
             OutputStatus.Success,
             "chat",
-            JsonSerializer.SerializeToElement(response),
+            JsonSerializer.SerializeToElement(finalResponse),
             citations,
             telemetry);
 
