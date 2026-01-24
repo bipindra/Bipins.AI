@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <OutputType>Exe</OutputType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="BenchmarkDotNet" Version="0.13.12" />
+    <PackageReference Include="BenchmarkDotNet.Diagnostics.Windows" Version="0.13.12" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Bipins.AI.Core\Bipins.AI.Core.csproj" />
+    <ProjectReference Include="..\..\src\Bipins.AI.Ingestion\Bipins.AI.Ingestion.csproj" />
+    <ProjectReference Include="..\..\src\Bipins.AI.Runtime\Bipins.AI.Runtime.csproj" />
+  </ItemGroup>
+
+</Project>
