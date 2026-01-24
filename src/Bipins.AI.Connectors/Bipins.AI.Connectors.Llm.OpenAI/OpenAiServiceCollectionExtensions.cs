@@ -18,8 +18,10 @@ public static class OpenAiServiceCollectionExtensions
         builder.Services.Configure(configure);
         builder.Services.AddHttpClient<OpenAiChatModel>();
         builder.Services.AddHttpClient<OpenAiEmbeddingModel>();
+        builder.Services.AddHttpClient<OpenAiChatModelStreaming>();
         builder.Services.AddSingleton<IChatModel, OpenAiChatModel>();
         builder.Services.AddSingleton<IEmbeddingModel, OpenAiEmbeddingModel>();
+        builder.Services.AddSingleton<IChatModelStreaming, OpenAiChatModelStreaming>();
 
         return builder;
     }

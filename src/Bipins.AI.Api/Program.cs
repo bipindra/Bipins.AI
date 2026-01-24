@@ -151,6 +151,91 @@ app.MapPost("/v1/ingest/text", async (
 .WithName("IngestText")
 .WithOpenApi();
 
+app.MapPost("/v1/chat/stream", async (
+    HttpContext context,
+    IModelRouter router,
+    IRetriever retriever,
+    IRagComposer composer,
+    JsonDocument request) =>
+{
+    var tenantId = context.User.FindFirst("tenantId")?.Value ?? "default";
+    var correlationId = Activity.Current?.Id ?? Guid.NewGuid().ToString();
+
+    using var activity = BipinsAiActivitySource.Instance.StartActivity("api.chat.stream");
+
+    try
+    {
+        // Parse input envelope
+        var input = JsonSerializer.Deserialize<AiInputEnvelope>(request.RootElement.GetRawText());
+        if (input == null)
+        {
+            return Results.BadRequest(new { error = "Invalid input envelope" });
+        }
+
+        tenantId = input.TenantId;
+
+        // Parse chat request from payload
+        var chatRequestJson = input.Payload;
+        var messages = chatRequestJson.TryGetProperty("messages", out var messagesProp)
+            ? JsonSerializer.Deserialize<List<Message>>(messagesProp.GetRawText())
+            : null;
+
+        if (messages == null || messages.Count == 0)
+        {
+            return Results.BadRequest(new { error = "messages are required" });
+        }
+
+        var chatRequest = new ChatRequest(messages);
+
+        // Retrieve relevant chunks (RAG)
+        var retrieveRequest = new RetrieveRequest(
+            messages.Last().Content,
+            TopK: 5);
+
+        var retrieved = await retriever.RetrieveAsync(retrieveRequest, context.RequestAborted);
+
+        // Compose augmented request
+        var augmentedRequest = composer.Compose(chatRequest, retrieved);
+
+        // Generate streaming response
+        var chatModel = await router.SelectChatModelAsync(tenantId, augmentedRequest, context.RequestAborted);
+        
+        // Check if model supports streaming
+        if (chatModel is not IChatModelStreaming streamingModel)
+        {
+            return Results.BadRequest(new { error = "Selected model does not support streaming" });
+        }
+
+        context.Response.ContentType = "text/event-stream";
+        context.Response.Headers.Append("Cache-Control", "no-cache");
+        context.Response.Headers.Append("Connection", "keep-alive");
+
+        await foreach (var chunk in streamingModel.GenerateStreamAsync(augmentedRequest, context.RequestAborted))
+        {
+            var chunkJson = JsonSerializer.Serialize(chunk);
+            await context.Response.WriteAsync($"data: {chunkJson}\n\n", context.RequestAborted);
+            await context.Response.Body.FlushAsync(context.RequestAborted);
+        }
+
+        await context.Response.WriteAsync("data: [DONE]\n\n", context.RequestAborted);
+        await context.Response.Body.FlushAsync(context.RequestAborted);
+
+        return Results.Empty;
+    }
+    catch (Exception ex)
+    {
+        activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+        var logger = context.RequestServices.GetRequiredService<ILogger<Program>>();
+        logger.LogError(ex, "Error in streaming chat endpoint");
+        return Results.Problem(
+            detail: ex.Message,
+            statusCode: 500);
+    }
+})
+.RequireAuthorization()
+.WithName("ChatStream")
+.WithOpenApi();
+
 app.MapPost("/v1/chat", async (
     HttpContext context,
     IModelRouter router,

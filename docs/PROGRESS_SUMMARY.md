@@ -35,7 +35,7 @@
 - ✅ Compiles successfully
 - ⏳ Embedding model support
 
-### 2. Vector Database Connectors - In Progress
+### 2. Vector Database Connectors - COMPLETE
 
 #### Pinecone ✅
 - ✅ Project created and added to solution
@@ -47,15 +47,25 @@
 - ✅ Model classes
 - ✅ Compiles successfully
 
-#### Weaviate 🚧
+#### Weaviate ✅
 - ✅ Project created and added to solution
-- ✅ Project file configured
-- ⏳ Implementation pending
+- ✅ WeaviateOptions class
+- ✅ WeaviateException class
+- ✅ WeaviateVectorStore implementation
+- ✅ WeaviateFilterTranslator implementation
+- ✅ WeaviateServiceCollectionExtensions
+- ✅ Model classes
+- ✅ Compiles successfully
 
-#### Milvus 🚧
+#### Milvus ✅
 - ✅ Project created and added to solution
-- ✅ Project file configured with Milvus SDK
-- ⏳ Implementation pending
+- ✅ MilvusOptions class
+- ✅ MilvusException class
+- ✅ MilvusVectorStore implementation (HTTP-based)
+- ✅ MilvusFilterTranslator implementation
+- ✅ MilvusServiceCollectionExtensions
+- ✅ Model classes
+- ✅ Compiles successfully
 
 ## In Progress 🚧
 
@@ -68,8 +78,8 @@
 
 ## Pending ⏳
 
-### Remaining TODO Items (3-20)
-- Item 3: Streaming responses
+### Remaining TODO Items (4-20)
+- Item 3: Streaming responses ✅
 - Item 4: Batch ingestion
 - Item 5: Document versioning
 - Item 6: Structured output/function calling
@@ -88,13 +98,20 @@
 - Item 19: Performance benchmarking
 - Item 20: Cost tracking
 
+### 3. Streaming Responses - COMPLETE ✅
+- ✅ IChatModelStreaming interface created
+- ✅ ChatResponseChunk model created
+- ✅ OpenAiChatModelStreaming implementation
+- ✅ Streaming endpoint `/v1/chat/stream` added to API
+- ✅ Server-Sent Events (SSE) format
+- ✅ Compiles successfully
+
 ## Next Immediate Steps
 
-1. Complete Weaviate connector implementation
-2. Complete Milvus connector implementation
-3. Implement streaming responses for chat endpoints
-4. Add batch ingestion support
-5. Continue with remaining items systematically
+1. Add batch ingestion support for multiple documents
+2. Implement document versioning and update capabilities
+3. Add support for structured output/function calling
+4. Continue with remaining items systematically
 
 ## Architecture Notes
 
