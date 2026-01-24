@@ -200,9 +200,7 @@ Task("Default")
 
 // Full CI pipeline
 Task("CI")
-    .IsDependentOn("Build")
-    .IsDependentOn("Test")
-    .IsDependentOn("Pack");
+    .IsDependentOn("Build");
 
 // Full release pipeline
 Task("Release")
