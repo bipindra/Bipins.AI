@@ -95,8 +95,29 @@ public class AzureOpenAiChatModel : IChatModel
                 var choice = openAiResponse.Choices[0];
                 var message = choice.Message ?? throw new AzureOpenAiException("No message in response");
 
+                // Parse tool calls from message
                 var toolCalls = new List<ToolCall>();
-                // Tool calls would be parsed from message if present
+                if (message.ToolCalls != null && message.ToolCalls.Count > 0)
+                {
+                    foreach (var toolCall in message.ToolCalls)
+                    {
+                        System.Text.Json.JsonElement argumentsJson;
+                        try
+                        {
+                            argumentsJson = System.Text.Json.JsonSerializer.Deserialize<System.Text.Json.JsonElement>(toolCall.Function.Arguments);
+                        }
+                        catch
+                        {
+                            // If parsing fails, wrap in a JSON element
+                            argumentsJson = System.Text.Json.JsonSerializer.SerializeToElement(toolCall.Function.Arguments);
+                        }
+
+                        toolCalls.Add(new ToolCall(
+                            toolCall.Id,
+                            toolCall.Function.Name,
+                            argumentsJson));
+                    }
+                }
 
                 var usage = openAiResponse.Usage != null
                     ? new Usage(

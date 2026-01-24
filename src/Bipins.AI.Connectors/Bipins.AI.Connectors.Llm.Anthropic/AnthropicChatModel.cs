@@ -61,13 +61,24 @@ public class AnthropicChatModel : IChatModel
             },
             m.Content)).ToList();
 
+        // Map tools to Anthropic format
+        List<AnthropicTool>? anthropicTools = null;
+        if (request.Tools != null && request.Tools.Count > 0)
+        {
+            anthropicTools = request.Tools.Select(t => new AnthropicTool(
+                t.Name,
+                t.Description,
+                t.Parameters)).ToList();
+        }
+
         var maxTokens = request.MaxTokens ?? 4096;
         var anthropicRequest = new AnthropicChatRequest(
             modelId,
             maxTokens,
             anthropicMessages,
             systemText,
-            request.Temperature);
+            request.Temperature,
+            anthropicTools);
 
         var attempt = 0;
         while (attempt < _options.MaxRetries)
@@ -107,6 +118,38 @@ public class AnthropicChatModel : IChatModel
                     .Where(c => c.Type == "text")
                     .Select(c => c.Text ?? string.Empty));
 
+                // Extract tool calls from tool_use content blocks
+                var toolCalls = new List<ToolCall>();
+                foreach (var contentBlock in anthropicResponse.Content)
+                {
+                    if (contentBlock.Type == "tool_use" && contentBlock.Id != null && contentBlock.Name != null)
+                    {
+                        System.Text.Json.JsonElement argumentsJson;
+                        try
+                        {
+                            if (contentBlock.Input != null)
+                            {
+                                // Convert input object to JsonElement
+                                var inputJson = System.Text.Json.JsonSerializer.Serialize(contentBlock.Input);
+                                argumentsJson = System.Text.Json.JsonSerializer.Deserialize<System.Text.Json.JsonElement>(inputJson);
+                            }
+                            else
+                            {
+                                argumentsJson = System.Text.Json.JsonSerializer.SerializeToElement(new { });
+                            }
+                        }
+                        catch
+                        {
+                            argumentsJson = System.Text.Json.JsonSerializer.SerializeToElement(new { });
+                        }
+
+                        toolCalls.Add(new ToolCall(
+                            contentBlock.Id,
+                            contentBlock.Name,
+                            argumentsJson));
+                    }
+                }
+
                 var usage = anthropicResponse.Usage != null
                     ? new Usage(
                         anthropicResponse.Usage.InputTokens,
@@ -116,7 +159,7 @@ public class AnthropicChatModel : IChatModel
 
                 return new ChatResponse(
                     textContent,
-                    null, // Tool calls not yet implemented
+                    toolCalls.Count > 0 ? toolCalls : null,
                     usage,
                     anthropicResponse.Model,
                     anthropicResponse.StopReason);

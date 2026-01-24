@@ -431,7 +431,49 @@ app.MapPost("/v1/chat", async (
             return Results.BadRequest(new { error = "messages are required" });
         }
 
-        var chatRequest = new ChatRequest(messages);
+        // Parse tools if provided
+        var tools = chatRequestJson.TryGetProperty("tools", out var toolsProp)
+            ? JsonSerializer.Deserialize<List<ToolDefinition>>(toolsProp.GetRawText())
+            : null;
+
+        // Parse tool choice if provided
+        var toolChoice = chatRequestJson.TryGetProperty("toolChoice", out var toolChoiceProp)
+            ? toolChoiceProp.GetString()
+            : null;
+
+        // Parse structured output if provided
+        StructuredOutputOptions? structuredOutput = null;
+        if (chatRequestJson.TryGetProperty("structuredOutput", out var structuredOutputProp))
+        {
+            var schema = structuredOutputProp.TryGetProperty("schema", out var schemaProp)
+                ? schemaProp
+                : default;
+            var responseFormat = structuredOutputProp.TryGetProperty("responseFormat", out var formatProp)
+                ? formatProp.GetString() ?? "json_schema"
+                : "json_schema";
+            
+            if (schema.ValueKind != JsonValueKind.Undefined)
+            {
+                structuredOutput = new StructuredOutputOptions(schema, responseFormat);
+            }
+        }
+
+        // Parse other optional parameters
+        var temperature = chatRequestJson.TryGetProperty("temperature", out var tempProp)
+            ? tempProp.GetSingle()
+            : (float?)null;
+        var maxTokens = chatRequestJson.TryGetProperty("maxTokens", out var maxTokensProp)
+            ? maxTokensProp.GetInt32()
+            : (int?)null;
+
+        var chatRequest = new ChatRequest(
+            messages,
+            tools,
+            toolChoice,
+            temperature,
+            maxTokens,
+            null,
+            structuredOutput);
 
         // Retrieve relevant chunks (RAG)
         var retrieveRequest = new RetrieveRequest(

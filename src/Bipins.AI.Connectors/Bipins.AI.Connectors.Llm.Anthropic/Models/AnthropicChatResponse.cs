@@ -20,7 +20,10 @@ internal record AnthropicChatResponse(
 /// </summary>
 internal record AnthropicContentBlock(
     [property: JsonPropertyName("type")] string Type,
-    [property: JsonPropertyName("text")] string? Text);
+    [property: JsonPropertyName("text")] string? Text = null,
+    [property: JsonPropertyName("id")] string? Id = null,
+    [property: JsonPropertyName("name")] string? Name = null,
+    [property: JsonPropertyName("input")] object? Input = null);
 
 /// <summary>
 /// Usage information from Anthropic.

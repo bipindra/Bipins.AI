@@ -7,8 +7,9 @@ namespace Bipins.AI.Connectors.Llm.AzureOpenAI.Models;
 /// </summary>
 internal record AzureOpenAiChatMessage(
     [property: JsonPropertyName("role")] string Role,
-    [property: JsonPropertyName("content")] string Content,
-    [property: JsonPropertyName("tool_call_id")] string? ToolCallId = null);
+    [property: JsonPropertyName("content")] string? Content = null,
+    [property: JsonPropertyName("tool_call_id")] string? ToolCallId = null,
+    [property: JsonPropertyName("tool_calls")] IReadOnlyList<AzureOpenAiToolCall>? ToolCalls = null);
 
 internal record AzureOpenAiChatRequest(
     [property: JsonPropertyName("model")] string Model,
@@ -26,6 +27,15 @@ internal record AzureOpenAiFunction(
     [property: JsonPropertyName("name")] string Name,
     [property: JsonPropertyName("description")] string Description,
     [property: JsonPropertyName("parameters")] object Parameters);
+
+internal record AzureOpenAiToolCall(
+    [property: JsonPropertyName("id")] string Id,
+    [property: JsonPropertyName("type")] string Type,
+    [property: JsonPropertyName("function")] AzureOpenAiFunctionCall Function);
+
+internal record AzureOpenAiFunctionCall(
+    [property: JsonPropertyName("name")] string Name,
+    [property: JsonPropertyName("arguments")] string Arguments);
 
 internal record AzureOpenAiChatResponse(
     [property: JsonPropertyName("id")] string Id,
