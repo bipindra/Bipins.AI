@@ -85,7 +85,6 @@ public class CacheTests
         var mockRedis = new Mock<IConnectionMultiplexer>();
         var mockDatabase = new Mock<IDatabase>();
         mockRedis.Setup(r => r.GetDatabase(It.IsAny<int>(), It.IsAny<object>())).Returns(mockDatabase.Object);
-        mockRedis.Setup(r => r.GetEndPoints()).Returns(Array.Empty<System.Net.EndPoint>());
 
         mockDatabase.Setup(d => d.StringGetAsync(It.IsAny<RedisKey>(), It.IsAny<CommandFlags>()))
             .ReturnsAsync(RedisValue.Null);

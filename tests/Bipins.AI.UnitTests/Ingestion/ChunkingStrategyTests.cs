@@ -33,7 +33,7 @@ public class ChunkingStrategyTests
     {
         var strategy = new FixedSizeChunkingStrategy(_fixedSizeLogger.Object);
         var text = "This is a test. " + new string('a', 200);
-        var options = new ChunkOptions("test-tenant", "test-doc", ChunkStrategy.FixedSize, MaxSize: 50, Overlap: 10);
+        var options = new ChunkOptions(50, 10, ChunkStrategy.FixedSize);
 
         var chunks = await strategy.ChunkAsync(text, options);
 
@@ -107,7 +107,7 @@ public class ChunkingStrategyTests
     {
         var strategy = new FixedSizeChunkingStrategy(_fixedSizeLogger.Object);
         var text = new string('a', 100);
-        var options = new ChunkOptions("test-tenant", "test-doc", ChunkStrategy.FixedSize, MaxSize: 30, Overlap: 10);
+        var options = new ChunkOptions(30, 10, ChunkStrategy.FixedSize);
 
         var chunks = await strategy.ChunkAsync(text, options);
 
@@ -123,7 +123,7 @@ public class ChunkingStrategyTests
     public async Task FixedSizeChunkingStrategy_HandlesEmptyText()
     {
         var strategy = new FixedSizeChunkingStrategy(_fixedSizeLogger.Object);
-        var options = new ChunkOptions("test-tenant", "test-doc", ChunkStrategy.FixedSize, MaxSize: 50, Overlap: 10);
+        var options = new ChunkOptions(50, 10, ChunkStrategy.FixedSize);
 
         var chunks = await strategy.ChunkAsync("", options);
 
