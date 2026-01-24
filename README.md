@@ -412,8 +412,47 @@ See `src/Bipins.AI.Samples/appsettings.json` for an example configuration.
 
 ## License
 
-[Your License Here]
+MIT License
 
-## Contributing
+Copyright (c) [year] [fullname]
 
-[Contributing Guidelines]
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+## ToDo
+
+- [ ] Add support for additional LLM providers (Anthropic Claude, Azure OpenAI, AWS Bedrock)
+- [ ] Add support for additional vector databases (Pinecone, Weaviate, Milvus)
+- [ ] Implement streaming responses for chat endpoints
+- [ ] Add batch ingestion support for multiple documents
+- [ ] Implement document versioning and update capabilities
+- [ ] Add support for structured output/function calling
+- [ ] Implement rate limiting and throttling policies
+- [ ] Add comprehensive unit test coverage
+- [ ] Add integration tests for all connectors
+- [ ] Implement authentication and authorization improvements
+- [ ] Add support for custom chunking strategies
+- [ ] Implement metadata filtering enhancements
+- [ ] Add monitoring and alerting capabilities
+- [ ] Create Docker images for API and Worker services
+- [ ] Add Kubernetes deployment manifests
+- [ ] Implement distributed caching support
+- [ ] Add support for multi-tenant isolation
+- [ ] Create comprehensive API documentation
+- [ ] Add performance benchmarking suite
+- [ ] Implement cost tracking and reporting
