@@ -18,7 +18,7 @@ public class IngestionIntegrationTests : IClassFixture<IntegrationTestFixture>
         _fixture = fixture;
     }
 
-    [Fact]
+    [Fact(Skip = "Requires OpenAI API key and Qdrant instance")]
     public async Task Ingest_ThenQuery_ReturnsExpectedCitations()
     {
         var pipeline = _fixture.Services.GetRequiredService<IngestionPipeline>();
