@@ -87,13 +87,23 @@ public class BedrockChatModel : IChatModel
         }
 
         var maxTokens = request.MaxTokens ?? 4096;
+        
+        // Handle structured output (Bedrock/Anthropic supports JSON mode)
+        object? responseFormat = null;
+        if (request.StructuredOutput != null)
+        {
+            // Bedrock uses Anthropic format - JSON mode
+            responseFormat = new { type = "json_object" };
+        }
+        
         var bedrockRequest = new BedrockChatRequest(
             "bedrock-2023-05-31", // Anthropic version for Bedrock
             maxTokens,
             bedrockMessages,
             systemText,
             request.Temperature,
-            bedrockTools);
+            bedrockTools,
+            responseFormat);
 
         var requestJson = JsonSerializer.Serialize(bedrockRequest, new JsonSerializerOptions
         {

@@ -17,7 +17,8 @@ internal record AzureOpenAiChatRequest(
     [property: JsonPropertyName("temperature")] float? Temperature = null,
     [property: JsonPropertyName("max_tokens")] int? MaxTokens = null,
     [property: JsonPropertyName("tools")] IReadOnlyList<AzureOpenAiTool>? Tools = null,
-    [property: JsonPropertyName("tool_choice")] object? ToolChoice = null);
+    [property: JsonPropertyName("tool_choice")] object? ToolChoice = null,
+    [property: JsonPropertyName("response_format")] object? ResponseFormat = null);
 
 internal record AzureOpenAiTool(
     [property: JsonPropertyName("type")] string Type,

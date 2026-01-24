@@ -22,7 +22,8 @@ internal record BedrockChatRequest(
     [property: JsonPropertyName("messages")] List<BedrockMessage> Messages,
     [property: JsonPropertyName("system")] string? System = null,
     [property: JsonPropertyName("temperature")] float? Temperature = null,
-    [property: JsonPropertyName("tools")] List<BedrockTool>? Tools = null);
+    [property: JsonPropertyName("tools")] List<BedrockTool>? Tools = null,
+    [property: JsonPropertyName("response_format")] object? ResponseFormat = null);
 
 internal record BedrockChatResponse(
     [property: JsonPropertyName("id")] string Id,

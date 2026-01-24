@@ -51,13 +51,25 @@ public class AzureOpenAiChatModel : IChatModel
             "function",
             new AzureOpenAiFunction(t.Name, t.Description, t.Parameters))).ToList();
 
+        // Handle structured output (Azure OpenAI supports same format as OpenAI)
+        object? responseFormat = null;
+        if (request.StructuredOutput != null)
+        {
+            responseFormat = new
+            {
+                type = request.StructuredOutput.ResponseFormat,
+                json_schema = request.StructuredOutput.Schema
+            };
+        }
+
         var openAiRequest = new AzureOpenAiChatRequest(
             deploymentName, // Azure uses deployment name instead of model ID
             messages,
             request.Temperature,
             request.MaxTokens,
             tools,
-            request.ToolChoice != null ? new { type = request.ToolChoice } : null);
+            request.ToolChoice != null ? new { type = request.ToolChoice } : null,
+            responseFormat);
 
         var attempt = 0;
         while (attempt < _options.MaxRetries)

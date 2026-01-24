@@ -11,5 +11,6 @@ internal record AnthropicChatRequest(
     [property: JsonPropertyName("messages")] List<AnthropicMessage> Messages,
     [property: JsonPropertyName("system")] string? System = null,
     [property: JsonPropertyName("temperature")] float? Temperature = null,
-    [property: JsonPropertyName("tools")] List<AnthropicTool>? Tools = null);
+    [property: JsonPropertyName("tools")] List<AnthropicTool>? Tools = null,
+    [property: JsonPropertyName("response_format")] object? ResponseFormat = null);
 
