@@ -7,6 +7,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Amazon.Lambda.APIGatewayEvents" Version="2.7.0" />
+    <PackageReference Include="AWSSDK.BedrockRuntime" Version="3.7.401" />
+    <PackageReference Include="AWSSDK.CostExplorer" Version="3.7.401" />
+    <PackageReference Include="AWSSDK.DynamoDBv2" Version="3.7.401" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.8.0" />
     <PackageReference Include="xunit" Version="2.6.2" />
     <PackageReference Include="xunit.runner.visualstudio" Version="2.5.3" />
@@ -22,6 +26,7 @@
     <ProjectReference Include="..\..\src\Bipins.AI.Api\Bipins.AI.Api.csproj" />
     <ProjectReference Include="..\..\src\Bipins.AI.Providers\Bipins.AI.Providers.OpenAI\Bipins.AI.Providers.OpenAI.csproj" />
     <ProjectReference Include="..\..\src\Bipins.AI.Vectors\Bipins.AI.Vectors.Qdrant\Bipins.AI.Vectors.Qdrant.csproj" />
+    <ProjectReference Include="..\..\samples\AICostOptimizationAdvisor\src\Shared\AICostOptimizationAdvisor.Shared.csproj" />
   </ItemGroup>
 
 </Project>
