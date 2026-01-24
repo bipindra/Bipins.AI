@@ -1,0 +1,41 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bipins-ai-worker
+  namespace: bipins-ai
+  labels:
+    app: bipins-ai-worker
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: bipins-ai-worker
+  template:
+    metadata:
+      labels:
+        app: bipins-ai-worker
+    spec:
+      containers:
+      - name: worker
+        image: bipins-ai-worker:latest
+        imagePullPolicy: IfNotPresent
+        envFrom:
+        - configMapRef:
+            name: bipins-ai-config
+        - secretRef:
+            name: bipins-ai-secrets
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 1000
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: false
+          capabilities:
+            drop:
+            - ALL

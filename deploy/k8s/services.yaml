@@ -1,0 +1,33 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: bipins-ai-api
+  namespace: bipins-ai
+  labels:
+    app: bipins-ai-api
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: 8080
+    protocol: TCP
+    name: http
+  selector:
+    app: bipins-ai-api
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: bipins-ai-worker
+  namespace: bipins-ai
+  labels:
+    app: bipins-ai-worker
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: 8080
+    protocol: TCP
+    name: http
+  selector:
+    app: bipins-ai-worker
