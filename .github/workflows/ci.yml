@@ -6,12 +6,6 @@ on:
   pull_request:
     branches: [ master, main, develop ]
   workflow_dispatch:
-    inputs:
-      publish_packages:
-        description: 'Publish packages to configured package server'
-        required: false
-        default: false
-        type: boolean
 
 jobs:
   build-and-test:
@@ -31,16 +25,12 @@ jobs:
       uses: actions/setup-dotnet@v4
       with:
         dotnet-version: ${{ matrix.dotnet-version }}
-        source-url: https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json
     
     - name: Install Cake
       uses: cake-build/cake-action@v3
     
     - name: Run Cake Build (CI)
       run: dotnet cake build.cake --target=CI
-      env:
-        PACKAGE_SOURCE_URL: ${{ secrets.PACKAGE_SOURCE_URL }}
-        PACKAGE_API_KEY: ${{ secrets.PACKAGE_API_KEY }}
     
     - name: Publish test results
       uses: EnricoMi/publish-unit-test-result-action@v2
@@ -59,60 +49,3 @@ jobs:
         flags: unittests
         name: codecov-umbrella
         fail_ci_if_error: false
-
-  publish-packages:
-    needs: build-and-test
-    runs-on: ubuntu-latest
-    if: github.event_name == 'workflow_dispatch' && github.event.inputs.publish_packages == 'true' || (github.event_name == 'push' && github.ref == 'refs/heads/master' && contains(github.event.head_commit.message, '[publish-packages]'))
-    
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
-    
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v4
-      with:
-        dotnet-version: '8.0.x'
-    
-    - name: Install Cake
-      uses: cake-build/cake-action@v3
-    
-    - name: Run Cake Build (Pack)
-      run: dotnet cake build.cake --target=Pack --configuration=Release
-    
-    - name: Configure package source
-      id: package_source
-      run: |
-        if [ -n "${{ secrets.PACKAGE_SOURCE_URL }}" ]; then
-          echo "source=${{ secrets.PACKAGE_SOURCE_URL }}" >> $GITHUB_OUTPUT
-        else
-          echo "source=https://api.nuget.org/v3/index.json" >> $GITHUB_OUTPUT
-        fi
-        if [ -n "${{ secrets.PACKAGE_SOURCE_NAME }}" ]; then
-          echo "name=${{ secrets.PACKAGE_SOURCE_NAME }}" >> $GITHUB_OUTPUT
-        else
-          echo "name=default" >> $GITHUB_OUTPUT
-        fi
-    
-    - name: Add package source (if custom)
-      if: steps.package_source.outputs.source != '' && steps.package_source.outputs.source != 'https://api.nuget.org/v3/index.json'
-      env:
-        PACKAGE_SOURCE_URL: ${{ secrets.PACKAGE_SOURCE_URL }}
-        PACKAGE_SOURCE_USERNAME: ${{ secrets.PACKAGE_SOURCE_USERNAME }}
-        PACKAGE_API_KEY: ${{ secrets.PACKAGE_API_KEY }}
-      run: |
-        dotnet nuget add source "$PACKAGE_SOURCE_URL" \
-          --name "${{ steps.package_source.outputs.name }}" \
-          --username "$PACKAGE_SOURCE_USERNAME" \
-          --password "$PACKAGE_API_KEY" \
-          --store-password-in-clear-text || true
-    
-    - name: Run Cake Build (Publish)
-      run: |
-        dotnet cake build.cake --target=Publish --configuration=Release --publishPackages=true
-      env:
-        PACKAGE_API_KEY: ${{ secrets.PACKAGE_API_KEY }}
-        PACKAGE_SOURCE_URL: ${{ secrets.PACKAGE_SOURCE_URL }}
-        PACKAGE_SOURCE_USERNAME: ${{ secrets.PACKAGE_SOURCE_USERNAME }}
