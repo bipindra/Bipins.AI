@@ -81,21 +81,11 @@ if (Test-Path $artifactsDir) {
 }
 New-Item -ItemType Directory -Path $artifactsDir | Out-Null
 
-# Pack all projects that should be published
-Write-Host "`nPacking NuGet packages..." -ForegroundColor Cyan
+# Pack the main Bipins.AI package (which includes all projects)
+Write-Host "`nPacking NuGet package..." -ForegroundColor Cyan
 
 $projectsToPack = @(
-    "src\Bipins.AI.Core\Bipins.AI.Core.csproj",
-    "src\Bipins.AI.Runtime\Bipins.AI.Runtime.csproj",
-    "src\Bipins.AI.Ingestion\Bipins.AI.Ingestion.csproj",
-    "src\Bipins.AI.Providers\Bipins.AI.Providers.OpenAI\Bipins.AI.Providers.OpenAI.csproj",
-    "src\Bipins.AI.Providers\Bipins.AI.Providers.Anthropic\Bipins.AI.Providers.Anthropic.csproj",
-    "src\Bipins.AI.Providers\Bipins.AI.Providers.AzureOpenAI\Bipins.AI.Providers.AzureOpenAI.csproj",
-    "src\Bipins.AI.Providers\Bipins.AI.Providers.Bedrock\Bipins.AI.Providers.Bedrock.csproj",
-    "src\Bipins.AI.Vectors\Bipins.AI.Vectors.Qdrant\Bipins.AI.Vectors.Qdrant.csproj",
-    "src\Bipins.AI.Vectors\Bipins.AI.Vectors.Pinecone\Bipins.AI.Vectors.Pinecone.csproj",
-    "src\Bipins.AI.Vectors\Bipins.AI.Vectors.Weaviate\Bipins.AI.Vectors.Weaviate.csproj",
-    "src\Bipins.AI.Vectors\Bipins.AI.Vectors.Milvus\Bipins.AI.Vectors.Milvus.csproj"
+    "src\Bipins.AI\Bipins.AI.csproj"
 )
 
 $packedFiles = @()

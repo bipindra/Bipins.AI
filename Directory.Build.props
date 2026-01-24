@@ -28,7 +28,10 @@
     <EmbedUntrackedSources>true</EmbedUntrackedSources>
     <IncludeSourceRevisionInInformationalVersion>true</IncludeSourceRevisionInInformationalVersion>
     
-    <!-- Projects that should NOT be published -->
+    <!-- Only the main Bipins.AI package should be published -->
+    <IsPackable Condition="'$(MSBuildProjectName)' != 'Bipins.AI'">false</IsPackable>
+    
+    <!-- Projects that should NOT be published (explicit for clarity) -->
     <IsPackable Condition="'$(MSBuildProjectName)' == 'Bipins.AI.Api'">false</IsPackable>
     <IsPackable Condition="'$(MSBuildProjectName)' == 'Bipins.AI.Worker'">false</IsPackable>
     <IsPackable Condition="'$(MSBuildProjectName)' == 'Bipins.AI.Samples'">false</IsPackable>

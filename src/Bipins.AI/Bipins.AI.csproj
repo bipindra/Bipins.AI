@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Bipins.AI</RootNamespace>
+    <PackageId>Bipins.AI</PackageId>
+    <Description>Bipins.AI - Enterprise AI platform for building intelligent applications with RAG (Retrieval-Augmented Generation), multiple LLM providers, and vector databases. Includes Core, Runtime, Ingestion, Providers (OpenAI, Anthropic, Azure OpenAI, Bedrock), and Vector integrations (Qdrant, Pinecone, Weaviate, Milvus).</Description>
+    <TargetFramework>net8.0</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Core Libraries -->
+    <ProjectReference Include="..\Bipins.AI.Core\Bipins.AI.Core.csproj" />
+    <ProjectReference Include="..\Bipins.AI.Runtime\Bipins.AI.Runtime.csproj" />
+    <ProjectReference Include="..\Bipins.AI.Ingestion\Bipins.AI.Ingestion.csproj" />
+    
+    <!-- LLM Providers -->
+    <ProjectReference Include="..\Bipins.AI.Providers\Bipins.AI.Providers.OpenAI\Bipins.AI.Providers.OpenAI.csproj" />
+    <ProjectReference Include="..\Bipins.AI.Providers\Bipins.AI.Providers.Anthropic\Bipins.AI.Providers.Anthropic.csproj" />
+    <ProjectReference Include="..\Bipins.AI.Providers\Bipins.AI.Providers.AzureOpenAI\Bipins.AI.Providers.AzureOpenAI.csproj" />
+    <ProjectReference Include="..\Bipins.AI.Providers\Bipins.AI.Providers.Bedrock\Bipins.AI.Providers.Bedrock.csproj" />
+    
+    <!-- Vector Database Integrations -->
+    <ProjectReference Include="..\Bipins.AI.Vectors\Bipins.AI.Vectors.Qdrant\Bipins.AI.Vectors.Qdrant.csproj" />
+    <ProjectReference Include="..\Bipins.AI.Vectors\Bipins.AI.Vectors.Pinecone\Bipins.AI.Vectors.Pinecone.csproj" />
+    <ProjectReference Include="..\Bipins.AI.Vectors\Bipins.AI.Vectors.Weaviate\Bipins.AI.Vectors.Weaviate.csproj" />
+    <ProjectReference Include="..\Bipins.AI.Vectors\Bipins.AI.Vectors.Milvus\Bipins.AI.Vectors.Milvus.csproj" />
+  </ItemGroup>
+
+</Project>

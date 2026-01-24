@@ -103,21 +103,18 @@ export PACKAGE_SOURCE_URL="https://pkgs.dev.azure.com/ORG/_packaging/FEED/nuget/
 - Set `PACKAGE_SOURCE_URL` to your server's NuGet v3 feed URL
 - Provide credentials via `PACKAGE_API_KEY` and optionally `PACKAGE_SOURCE_USERNAME`
 
-## Packages Published
+## Package Published
 
-The following packages will be published to NuGet.org:
+A single unified package will be published:
 
-- `Bipins.AI.Core` - Core abstractions and models
-- `Bipins.AI.Runtime` - Runtime components (pipelines, policies, RAG)
-- `Bipins.AI.Ingestion` - Document ingestion and chunking
-- `Bipins.AI.Providers.OpenAI` - OpenAI provider
-- `Bipins.AI.Providers.Anthropic` - Anthropic Claude provider
-- `Bipins.AI.Providers.AzureOpenAI` - Azure OpenAI provider
-- `Bipins.AI.Providers.Bedrock` - AWS Bedrock provider
-- `Bipins.AI.Vectors.Qdrant` - Qdrant vector database
-- `Bipins.AI.Vectors.Pinecone` - Pinecone vector database
-- `Bipins.AI.Vectors.Weaviate` - Weaviate vector database
-- `Bipins.AI.Vectors.Milvus` - Milvus vector database
+- **`Bipins.AI`** - Complete Bipins.AI platform including:
+  - Core abstractions and models
+  - Runtime components (pipelines, policies, RAG)
+  - Document ingestion and chunking
+  - LLM Providers: OpenAI, Anthropic, Azure OpenAI, AWS Bedrock
+  - Vector Database Integrations: Qdrant, Pinecone, Weaviate, Milvus
+
+This meta-package includes all components, making it easy to get started with the full Bipins.AI platform in a single package reference.
 
 ## Version Management
 
