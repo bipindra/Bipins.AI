@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Text.Json;
 using Bipins.AI.Api.Authentication;
 using Bipins.AI.Core;
+using Bipins.AI.Core.Configuration;
 using Bipins.AI.Core.DependencyInjection;
 using Bipins.AI.Core.Contracts;
 using Bipins.AI.Core.Ingestion;
@@ -21,6 +22,12 @@ using Microsoft.Extensions.Hosting;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Add user secrets support
+if (builder.Environment.IsDevelopment())
+{
+    builder.Configuration.AddUserSecrets<Program>();
+}
+
 // Add services
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -34,17 +41,17 @@ builder.Services
     .AddBipinsAI()
     .AddOpenAI(o =>
     {
-        o.ApiKey = builder.Configuration["OpenAI:ApiKey"] ?? throw new InvalidOperationException("OpenAI:ApiKey not configured");
-        o.BaseUrl = builder.Configuration["OpenAI:BaseUrl"] ?? "https://api.openai.com/v1";
-        o.DefaultChatModelId = builder.Configuration["OpenAI:DefaultChatModelId"] ?? "gpt-3.5-turbo";
-        o.DefaultEmbeddingModelId = builder.Configuration["OpenAI:DefaultEmbeddingModelId"] ?? "text-embedding-ada-002";
+        o.ApiKey = builder.Configuration.GetRequiredValueOrEnvironmentVariable("OpenAI:ApiKey", "OPENAI_API_KEY");
+        o.BaseUrl = builder.Configuration.GetValueOrEnvironmentVariable("OpenAI:BaseUrl", "OPENAI_BASE_URL") ?? "https://api.openai.com/v1";
+        o.DefaultChatModelId = builder.Configuration.GetValueOrEnvironmentVariable("OpenAI:DefaultChatModelId", "OPENAI_DEFAULT_CHAT_MODEL_ID") ?? "gpt-3.5-turbo";
+        o.DefaultEmbeddingModelId = builder.Configuration.GetValueOrEnvironmentVariable("OpenAI:DefaultEmbeddingModelId", "OPENAI_DEFAULT_EMBEDDING_MODEL_ID") ?? "text-embedding-ada-002";
     })
     .AddQdrant(o =>
     {
-        o.Endpoint = builder.Configuration["Qdrant:Endpoint"] ?? "http://localhost:6333";
-        o.ApiKey = builder.Configuration["Qdrant:ApiKey"];
-        o.DefaultCollectionName = builder.Configuration["Qdrant:CollectionName"] ?? "default";
-        o.VectorSize = int.Parse(builder.Configuration["Qdrant:VectorSize"] ?? "1536");
+        o.Endpoint = builder.Configuration.GetValueOrEnvironmentVariable("Qdrant:Endpoint", "QDRANT_ENDPOINT") ?? "http://localhost:6333";
+        o.ApiKey = builder.Configuration.GetValueOrEnvironmentVariable("Qdrant:ApiKey", "QDRANT_API_KEY");
+        o.DefaultCollectionName = builder.Configuration.GetValueOrEnvironmentVariable("Qdrant:CollectionName", "QDRANT_COLLECTION_NAME") ?? "default";
+        o.VectorSize = int.Parse(builder.Configuration.GetValueOrEnvironmentVariable("Qdrant:VectorSize", "QDRANT_VECTOR_SIZE") ?? "1536");
         o.CreateCollectionIfMissing = true;
     });
 

@@ -3,6 +3,7 @@
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <RootNamespace>Bipins.AI.Samples</RootNamespace>
+    <UserSecretsId>Bipins.AI.Samples</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>
@@ -11,6 +12,7 @@
     <ProjectReference Include="..\Bipins.AI.Ingestion\Bipins.AI.Ingestion.csproj" />
     <ProjectReference Include="..\Bipins.AI.Connectors\Bipins.AI.Connectors.Llm.OpenAI\Bipins.AI.Connectors.Llm.OpenAI.csproj" />
     <ProjectReference Include="..\Bipins.AI.Connectors\Bipins.AI.Connectors.Vector.Qdrant\Bipins.AI.Connectors.Vector.Qdrant.csproj" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" Version="8.0.0" />
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.0" />
     <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="8.0.0" />
   </ItemGroup>

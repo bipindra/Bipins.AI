@@ -2,6 +2,7 @@
 
   <PropertyGroup>
     <RootNamespace>Bipins.AI.Api</RootNamespace>
+    <UserSecretsId>Bipins.AI.Api</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>
