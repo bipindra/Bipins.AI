@@ -13,6 +13,7 @@ using Bipins.AI.Connectors.Vector.Qdrant;
 using Bipins.AI.Ingestion;
 using Bipins.AI.Runtime;
 using Bipins.AI.Api.Middleware;
+using Bipins.AI.Api.HealthChecks;
 using Bipins.AI.Runtime.Observability;
 using Bipins.AI.Runtime.Policies;
 using Bipins.AI.Runtime.Rag;
@@ -33,6 +34,14 @@ if (builder.Environment.IsDevelopment())
 // Add services
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+
+// Add health checks
+builder.Services.AddHealthChecks()
+    .AddCheck<VectorStoreHealthCheck>("vector_store")
+    .AddCheck<ChatModelHealthCheck>("chat_model");
+
+// Add metrics
+builder.Services.AddSingleton<MetricsCollector>();
 
 // Add Bipins.AI services
 builder.Services.AddBipinsAI();
@@ -133,6 +142,9 @@ if (app.Environment.IsDevelopment())
 
 app.UseAuthentication();
 app.UseAuthorization();
+
+// Health check endpoint
+app.MapHealthChecks("/health");
 
 // Rate limiting middleware
 app.UseMiddleware<Bipins.AI.Api.Middleware.RateLimitMiddleware>();
