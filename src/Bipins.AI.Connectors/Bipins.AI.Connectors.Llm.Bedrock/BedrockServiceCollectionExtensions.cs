@@ -17,7 +17,9 @@ public static class BedrockServiceCollectionExtensions
     {
         builder.Services.Configure(configure);
         builder.Services.AddSingleton<BedrockChatModel>();
+        builder.Services.AddSingleton<BedrockChatModelStreaming>();
         builder.Services.AddSingleton<IChatModel>(sp => sp.GetRequiredService<BedrockChatModel>());
+        builder.Services.AddSingleton<IChatModelStreaming>(sp => sp.GetRequiredService<BedrockChatModelStreaming>());
 
         return builder;
     }

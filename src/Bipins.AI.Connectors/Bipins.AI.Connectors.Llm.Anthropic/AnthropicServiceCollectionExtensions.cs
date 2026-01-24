@@ -17,7 +17,9 @@ public static class AnthropicServiceCollectionExtensions
     {
         builder.Services.Configure(configure);
         builder.Services.AddHttpClient<AnthropicChatModel>();
+        builder.Services.AddHttpClient<AnthropicChatModelStreaming>();
         builder.Services.AddSingleton<IChatModel, AnthropicChatModel>();
+        builder.Services.AddSingleton<IChatModelStreaming, AnthropicChatModelStreaming>();
 
         return builder;
     }

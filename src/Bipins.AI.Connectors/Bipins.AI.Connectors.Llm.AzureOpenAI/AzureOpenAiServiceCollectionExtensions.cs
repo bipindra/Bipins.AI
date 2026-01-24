@@ -17,8 +17,10 @@ public static class AzureOpenAiServiceCollectionExtensions
     {
         builder.Services.Configure(configure);
         builder.Services.AddHttpClient<AzureOpenAiChatModel>();
+        builder.Services.AddHttpClient<AzureOpenAiChatModelStreaming>();
         builder.Services.AddHttpClient<AzureOpenAiEmbeddingModel>();
         builder.Services.AddSingleton<IChatModel, AzureOpenAiChatModel>();
+        builder.Services.AddSingleton<IChatModelStreaming, AzureOpenAiChatModelStreaming>();
         builder.Services.AddSingleton<IEmbeddingModel, AzureOpenAiEmbeddingModel>();
 
         return builder;
