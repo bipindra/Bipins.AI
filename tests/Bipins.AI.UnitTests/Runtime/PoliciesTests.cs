@@ -204,25 +204,40 @@ public class PoliciesTests
         };
         var policy = new RateLimitingPolicy(_policyLogger.Object, options, rateLimiter);
 
-        var semaphore = new SemaphoreSlim(0, 2);
+        var concurrentCount = 0;
+        var maxConcurrent = 0;
+        var lockObj = new object();
+        
         var tasks = Enumerable.Range(0, 5)
             .Select(i => Task.Run(async () =>
             {
                 await policy.ExecuteAsync("key1", async ct =>
                 {
-                    semaphore.Release();
-                    await Task.Delay(100, ct);
+                    lock (lockObj)
+                    {
+                        concurrentCount++;
+                        maxConcurrent = Math.Max(maxConcurrent, concurrentCount);
+                    }
+                    
+                    try
+                    {
+                        await Task.Delay(100, ct);
+                    }
+                    finally
+                    {
+                        lock (lockObj)
+                        concurrentCount--;
+                    }
+                    
                     return i;
                 });
             }))
             .ToArray();
 
-        // Wait for semaphore to be released (max 2 concurrent)
-        await Task.Delay(50);
-        var concurrentCount = 2 - semaphore.CurrentCount;
-        Assert.True(concurrentCount <= 2);
-
         await Task.WhenAll(tasks);
+        
+        // Should not exceed the concurrent limit
+        Assert.True(maxConcurrent <= 2, $"Max concurrent was {maxConcurrent}, expected <= 2");
     }
 
     [Fact]
@@ -285,23 +300,38 @@ public class PoliciesTests
         };
         var policy = new ThrottlingPolicy(_throttlingLogger.Object, options);
 
-        var semaphore = new SemaphoreSlim(0, 2);
+        var concurrentCount = 0;
+        var maxConcurrent = 0;
+        var lockObj = new object();
+        
         var tasks = Enumerable.Range(0, 5)
             .Select(i => Task.Run(async () =>
             {
                 await policy.ExecuteAsync(async ct =>
                 {
-                    semaphore.Release();
-                    await Task.Delay(100, ct);
+                    lock (lockObj)
+                    {
+                        concurrentCount++;
+                        maxConcurrent = Math.Max(maxConcurrent, concurrentCount);
+                    }
+                    
+                    try
+                    {
+                        await Task.Delay(100, ct);
+                    }
+                    finally
+                    {
+                        lock (lockObj)
+                            concurrentCount--;
+                    }
                 });
             }))
             .ToArray();
 
-        await Task.Delay(50);
-        var concurrentCount = 2 - semaphore.CurrentCount;
-        Assert.True(concurrentCount <= 2);
-
         await Task.WhenAll(tasks);
+        
+        // Should not exceed the concurrent limit
+        Assert.True(maxConcurrent <= 2, $"Max concurrent was {maxConcurrent}, expected <= 2");
     }
 
     [Fact]
