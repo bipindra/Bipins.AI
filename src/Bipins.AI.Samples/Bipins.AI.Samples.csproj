@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>Bipins.AI.Samples</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Bipins.AI.Core\Bipins.AI.Core.csproj" />
+    <ProjectReference Include="..\Bipins.AI.Runtime\Bipins.AI.Runtime.csproj" />
+    <ProjectReference Include="..\Bipins.AI.Ingestion\Bipins.AI.Ingestion.csproj" />
+    <ProjectReference Include="..\Bipins.AI.Connectors\Bipins.AI.Connectors.Llm.OpenAI\Bipins.AI.Connectors.Llm.OpenAI.csproj" />
+    <ProjectReference Include="..\Bipins.AI.Connectors\Bipins.AI.Connectors.Vector.Qdrant\Bipins.AI.Connectors.Vector.Qdrant.csproj" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="8.0.0" />
+  </ItemGroup>
+
+</Project>

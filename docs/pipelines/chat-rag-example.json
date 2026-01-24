@@ -1,0 +1,51 @@
+{
+  "name": "ChatRAG",
+  "description": "RAG-enabled chat pipeline with retrieval and generation",
+  "steps": [
+    {
+      "name": "Normalize",
+      "type": "Bipins.AI.Runtime.Pipeline.NormalizeStep",
+      "config": {
+        "validateInput": true,
+        "extractTenantId": true
+      }
+    },
+    {
+      "name": "Retrieve",
+      "type": "Bipins.AI.Runtime.Rag.VectorRetriever",
+      "config": {
+        "topK": 5,
+        "minScore": 0.7
+      },
+      "retryPolicy": {
+        "maxAttempts": 3,
+        "initialDelay": 1000,
+        "maxDelay": 10000,
+        "backoffMultiplier": 2.0
+      }
+    },
+    {
+      "name": "Generate",
+      "type": "Bipins.AI.Runtime.Pipeline.ChatGenerationStep",
+      "config": {
+        "temperature": 0.7,
+        "maxTokens": 1000
+      },
+      "retryPolicy": {
+        "maxAttempts": 3,
+        "initialDelay": 2000,
+        "maxDelay": 30000,
+        "backoffMultiplier": 2.0
+      }
+    },
+    {
+      "name": "Format",
+      "type": "Bipins.AI.Runtime.Pipeline.FormatOutputStep",
+      "config": {
+        "includeCitations": true,
+        "includeTelemetry": true
+      }
+    }
+  ],
+  "timeout": "00:05:00"
+}

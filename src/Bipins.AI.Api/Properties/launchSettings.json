@@ -1,0 +1,12 @@
+{
+  "profiles": {
+    "Bipins.AI.Api": {
+      "commandName": "Project",
+      "launchBrowser": true,
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      },
+      "applicationUrl": "https://localhost:62210;http://localhost:62211"
+    }
+  }
+}

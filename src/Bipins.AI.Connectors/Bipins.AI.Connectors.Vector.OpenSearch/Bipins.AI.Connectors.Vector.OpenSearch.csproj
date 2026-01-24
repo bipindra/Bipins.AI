@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Bipins.AI.Connectors.Vector.OpenSearch</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Bipins.AI.Core\Bipins.AI.Core.csproj" />
+  </ItemGroup>
+
+</Project>

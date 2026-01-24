@@ -1,0 +1,48 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Chat RAG Pipeline Configuration",
+  "description": "Configuration for a RAG-enabled chat pipeline",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Pipeline name"
+    },
+    "steps": {
+      "type": "array",
+      "description": "Pipeline steps in execution order",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "enum": ["Normalize", "Retrieve", "Generate", "Format"]
+          },
+          "type": {
+            "type": "string",
+            "description": "Step implementation type"
+          },
+          "config": {
+            "type": "object",
+            "description": "Step-specific configuration"
+          },
+          "retryPolicy": {
+            "type": "object",
+            "properties": {
+              "maxAttempts": { "type": "integer" },
+              "initialDelay": { "type": "integer" },
+              "maxDelay": { "type": "integer" },
+              "backoffMultiplier": { "type": "number" }
+            }
+          }
+        },
+        "required": ["name", "type"]
+      }
+    },
+    "timeout": {
+      "type": "string",
+      "description": "Pipeline timeout (e.g., '00:05:00')"
+    }
+  },
+  "required": ["name", "steps"]
+}
