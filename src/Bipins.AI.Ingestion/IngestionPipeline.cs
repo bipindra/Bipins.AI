@@ -14,6 +14,7 @@ public class IngestionPipeline
     private readonly IChunker _chunker;
     private readonly IMetadataEnricher _enricher;
     private readonly IIndexer _indexer;
+    private readonly IDocumentVersionManager? _versionManager;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="IngestionPipeline"/> class.
@@ -24,7 +25,8 @@ public class IngestionPipeline
         ITextExtractor extractor,
         IChunker chunker,
         IMetadataEnricher enricher,
-        IIndexer indexer)
+        IIndexer indexer,
+        IDocumentVersionManager? versionManager = null)
     {
         _logger = logger;
         _loader = loader;
@@ -32,6 +34,7 @@ public class IngestionPipeline
         _chunker = chunker;
         _enricher = enricher;
         _indexer = indexer;
+        _versionManager = versionManager;
     }
 
     /// <summary>
@@ -44,6 +47,45 @@ public class IngestionPipeline
         CancellationToken cancellationToken = default)
     {
         _logger.LogInformation("Starting ingestion pipeline for {SourceUri}", sourceUri);
+
+        // Generate version ID if not provided and version manager is available
+        var versionId = options.VersionId;
+        if (string.IsNullOrEmpty(versionId) && _versionManager != null && !string.IsNullOrEmpty(options.DocId))
+        {
+            versionId = await _versionManager.GenerateVersionIdAsync(
+                options.TenantId,
+                options.DocId,
+                cancellationToken);
+            _logger.LogInformation("Generated version ID {VersionId} for document {DocId}", versionId, options.DocId);
+            
+            // Update options with generated version ID
+            options = options with { VersionId = versionId };
+        }
+
+        // Check for existing versions if update mode is Update
+        if (options.UpdateMode == UpdateMode.Update && _versionManager != null && !string.IsNullOrEmpty(options.DocId))
+        {
+            var existingVersions = await _versionManager.ListVersionsAsync(
+                options.TenantId,
+                options.DocId,
+                options.CollectionName,
+                cancellationToken);
+            
+            if (existingVersions.Count == 0)
+            {
+                _logger.LogWarning(
+                    "Update mode specified but no existing versions found for document {DocId}. Will create new version.",
+                    options.DocId);
+            }
+            else
+            {
+                _logger.LogInformation(
+                    "Found {Count} existing versions for document {DocId}. Updating with version {VersionId}",
+                    existingVersions.Count,
+                    options.DocId,
+                    versionId);
+            }
+        }
 
         // Load
         var document = await _loader.LoadAsync(sourceUri, cancellationToken);
@@ -68,9 +110,10 @@ public class IngestionPipeline
         var result = await _indexer.IndexAsync(enrichedChunks, options, cancellationToken);
 
         _logger.LogInformation(
-            "Ingestion completed: {ChunksIndexed} chunks indexed, {VectorsCreated} vectors created",
+            "Ingestion completed: {ChunksIndexed} chunks indexed, {VectorsCreated} vectors created, VersionId: {VersionId}",
             result.ChunksIndexed,
-            result.VectorsCreated);
+            result.VectorsCreated,
+            versionId);
 
         return result;
     }

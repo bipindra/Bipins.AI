@@ -41,7 +41,17 @@ This document tracks the implementation progress of all TODO items.
 **Status:** ⏳ Pending
 
 ### 5. Implement document versioning and update capabilities
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
+
+- ✅ Created IDocumentVersionManager interface
+- ✅ Implemented VectorStoreDocumentVersionManager
+- ✅ Enhanced IngestionPipeline to auto-generate version IDs
+- ✅ Added version checking logic in IngestionPipeline
+- ✅ Added createdAt timestamp to vector metadata
+- ✅ Added API endpoints: GET /v1/documents/{docId}/versions
+- ✅ Added API endpoints: GET /v1/documents/{docId}/versions/{versionId}
+- ✅ Version filtering support already exists via VectorFilter
+- ⏳ Documentation updates needed
 
 ### 6. Add support for structured output/function calling
 **Status:** ⏳ Pending

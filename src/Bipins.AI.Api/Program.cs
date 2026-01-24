@@ -522,4 +522,85 @@ app.MapPost("/v1/query", async (
 .WithName("Query")
 .WithOpenApi();
 
+app.MapGet("/v1/documents/{docId}/versions", async (
+    HttpContext context,
+    string docId,
+    IDocumentVersionManager versionManager) =>
+{
+    var tenantId = context.User.FindFirst("tenantId")?.Value ?? "default";
+
+    using var activity = BipinsAiActivitySource.Instance.StartActivity("api.documents.versions.list");
+
+    try
+    {
+        var versions = await versionManager.ListVersionsAsync(
+            tenantId,
+            docId,
+            cancellationToken: context.RequestAborted);
+
+        var output = new AiOutputEnvelope(
+            OutputStatus.Success,
+            "document.versions",
+            JsonSerializer.SerializeToElement(versions));
+
+        return Results.Ok(output);
+    }
+    catch (Exception ex)
+    {
+        activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+        var logger = context.RequestServices.GetRequiredService<ILogger<Program>>();
+        logger.LogError(ex, "Error listing versions for document {DocId}", docId);
+        return Results.Problem(
+            detail: ex.Message,
+            statusCode: 500);
+    }
+})
+.RequireAuthorization()
+.WithName("ListDocumentVersions")
+.WithOpenApi();
+
+app.MapGet("/v1/documents/{docId}/versions/{versionId}", async (
+    HttpContext context,
+    string docId,
+    string versionId,
+    IDocumentVersionManager versionManager) =>
+{
+    var tenantId = context.User.FindFirst("tenantId")?.Value ?? "default";
+
+    using var activity = BipinsAiActivitySource.Instance.StartActivity("api.documents.versions.get");
+
+    try
+    {
+        var version = await versionManager.GetVersionAsync(
+            tenantId,
+            docId,
+            versionId,
+            cancellationToken: context.RequestAborted);
+
+        if (version == null)
+        {
+            return Results.NotFound(new { error = $"Version {versionId} not found for document {docId}" });
+        }
+
+        var output = new AiOutputEnvelope(
+            OutputStatus.Success,
+            "document.version",
+            JsonSerializer.SerializeToElement(version));
+
+        return Results.Ok(output);
+    }
+    catch (Exception ex)
+    {
+        activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+        var logger = context.RequestServices.GetRequiredService<ILogger<Program>>();
+        logger.LogError(ex, "Error getting version {VersionId} for document {DocId}", versionId, docId);
+        return Results.Problem(
+            detail: ex.Message,
+            statusCode: 500);
+    }
+})
+.RequireAuthorization()
+.WithName("GetDocumentVersion")
+.WithOpenApi();
+
 app.Run();

@@ -72,7 +72,8 @@ public class DefaultIndexer : IIndexer
                     ["sourceUri"] = options.DocId ?? string.Empty,
                     ["docId"] = options.DocId ?? string.Empty,
                     ["chunkId"] = chunk.Id,
-                    ["tenantId"] = options.TenantId
+                    ["tenantId"] = options.TenantId,
+                    ["createdAt"] = DateTime.UtcNow
                 };
 
                 if (options.VersionId != null)

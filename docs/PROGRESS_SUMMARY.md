@@ -80,8 +80,8 @@
 
 ### Remaining TODO Items (4-20)
 - Item 3: Streaming responses ✅
-- Item 4: Batch ingestion
-- Item 5: Document versioning
+- Item 4: Batch ingestion ✅
+- Item 5: Document versioning ✅
 - Item 6: Structured output/function calling
 - Item 7: Rate limiting
 - Item 8: Unit test coverage
@@ -105,6 +105,24 @@
 - ✅ Streaming endpoint `/v1/chat/stream` added to API
 - ✅ Server-Sent Events (SSE) format
 - ✅ Compiles successfully
+
+### 4. Batch Ingestion - COMPLETE ✅
+- ✅ IngestBatchAsync method in IngestionPipeline
+- ✅ BatchIndexResult and BatchIngestionError models
+- ✅ API endpoint `/v1/ingest/batch` implemented
+- ✅ Supports both sourceUris and texts arrays
+- ✅ Configurable concurrency
+- ✅ Error handling per document
+
+### 5. Document Versioning - COMPLETE ✅
+- ✅ IDocumentVersionManager interface created
+- ✅ VectorStoreDocumentVersionManager implementation
+- ✅ Auto-generation of version IDs in IngestionPipeline
+- ✅ Version checking and logging
+- ✅ createdAt timestamp in metadata
+- ✅ API endpoint GET /v1/documents/{docId}/versions
+- ✅ API endpoint GET /v1/documents/{docId}/versions/{versionId}
+- ✅ Version filtering via existing VectorFilter support
 
 ## Next Immediate Steps
 

@@ -18,6 +18,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IChunker, MarkdownAwareChunker>();
         services.AddSingleton<IMetadataEnricher, DefaultMetadataEnricher>();
         services.AddSingleton<IIndexer, DefaultIndexer>();
+        services.AddSingleton<IDocumentVersionManager, VectorStoreDocumentVersionManager>();
         services.AddSingleton<IngestionPipeline>();
 
         return services;
