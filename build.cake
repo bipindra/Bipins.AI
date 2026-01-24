@@ -24,13 +24,35 @@ Task("Clean")
 {
     Information("Cleaning artifacts and build outputs...");
     
-    CleanDirectories(new[] {
-        artifactsDir,
-        testResultsDir,
-        coverageDir,
-        "**/bin",
-        "**/obj"
-    });
+    // Clean specific directories
+    if (DirectoryExists(artifactsDir))
+    {
+        CleanDirectory(artifactsDir);
+    }
+    
+    if (DirectoryExists(testResultsDir))
+    {
+        CleanDirectory(testResultsDir);
+    }
+    
+    if (DirectoryExists(coverageDir))
+    {
+        CleanDirectory(coverageDir);
+    }
+    
+    // Clean bin and obj directories
+    var binDirs = GetDirectories($"{srcDir}/**/bin");
+    var objDirs = GetDirectories($"{srcDir}/**/obj");
+    var testBinDirs = GetDirectories($"{testsDir}/**/bin");
+    var testObjDirs = GetDirectories($"{testsDir}/**/obj");
+    
+    foreach (var dir in binDirs.Concat(objDirs).Concat(testBinDirs).Concat(testObjDirs))
+    {
+        if (DirectoryExists(dir))
+        {
+            CleanDirectory(dir);
+        }
+    }
     
     Information("Clean completed.");
 });
