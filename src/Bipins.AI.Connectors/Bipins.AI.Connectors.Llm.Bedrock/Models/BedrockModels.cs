@@ -11,14 +11,18 @@ internal record BedrockMessage(
 
 internal record BedrockContentBlock(
     [property: JsonPropertyName("type")] string Type,
-    [property: JsonPropertyName("text")] string? Text);
+    [property: JsonPropertyName("text")] string? Text = null,
+    [property: JsonPropertyName("id")] string? Id = null,
+    [property: JsonPropertyName("name")] string? Name = null,
+    [property: JsonPropertyName("input")] object? Input = null);
 
 internal record BedrockChatRequest(
     [property: JsonPropertyName("anthropic_version")] string AnthropicVersion,
     [property: JsonPropertyName("max_tokens")] int MaxTokens,
     [property: JsonPropertyName("messages")] List<BedrockMessage> Messages,
     [property: JsonPropertyName("system")] string? System = null,
-    [property: JsonPropertyName("temperature")] float? Temperature = null);
+    [property: JsonPropertyName("temperature")] float? Temperature = null,
+    [property: JsonPropertyName("tools")] List<BedrockTool>? Tools = null);
 
 internal record BedrockChatResponse(
     [property: JsonPropertyName("id")] string Id,
@@ -32,3 +36,11 @@ internal record BedrockChatResponse(
 internal record BedrockUsage(
     [property: JsonPropertyName("input_tokens")] int InputTokens,
     [property: JsonPropertyName("output_tokens")] int OutputTokens);
+
+/// <summary>
+/// Internal DTO for Bedrock tool definition.
+/// </summary>
+internal record BedrockTool(
+    [property: JsonPropertyName("name")] string Name,
+    [property: JsonPropertyName("description")] string Description,
+    [property: JsonPropertyName("input_schema")] object InputSchema);

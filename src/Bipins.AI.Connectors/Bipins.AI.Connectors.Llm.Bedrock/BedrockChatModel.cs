@@ -76,13 +76,24 @@ public class BedrockChatModel : IChatModel
                 new BedrockContentBlock("text", m.Content)
             })).ToList();
 
+        // Map tools to Bedrock format
+        List<BedrockTool>? bedrockTools = null;
+        if (request.Tools != null && request.Tools.Count > 0)
+        {
+            bedrockTools = request.Tools.Select(t => new BedrockTool(
+                t.Name,
+                t.Description,
+                t.Parameters)).ToList();
+        }
+
         var maxTokens = request.MaxTokens ?? 4096;
         var bedrockRequest = new BedrockChatRequest(
             "bedrock-2023-05-31", // Anthropic version for Bedrock
             maxTokens,
             bedrockMessages,
             systemText,
-            request.Temperature);
+            request.Temperature,
+            bedrockTools);
 
         var requestJson = JsonSerializer.Serialize(bedrockRequest, new JsonSerializerOptions
         {
@@ -120,6 +131,38 @@ public class BedrockChatModel : IChatModel
                     .Where(c => c.Type == "text")
                     .Select(c => c.Text ?? string.Empty));
 
+                // Extract tool calls from tool_use content blocks
+                var toolCalls = new List<ToolCall>();
+                foreach (var contentBlock in bedrockResponse.Content)
+                {
+                    if (contentBlock.Type == "tool_use" && contentBlock.Id != null && contentBlock.Name != null)
+                    {
+                        System.Text.Json.JsonElement argumentsJson;
+                        try
+                        {
+                            if (contentBlock.Input != null)
+                            {
+                                // Convert input object to JsonElement
+                                var inputJson = JsonSerializer.Serialize(contentBlock.Input);
+                                argumentsJson = JsonSerializer.Deserialize<System.Text.Json.JsonElement>(inputJson);
+                            }
+                            else
+                            {
+                                argumentsJson = JsonSerializer.SerializeToElement(new { });
+                            }
+                        }
+                        catch
+                        {
+                            argumentsJson = JsonSerializer.SerializeToElement(new { });
+                        }
+
+                        toolCalls.Add(new ToolCall(
+                            contentBlock.Id,
+                            contentBlock.Name,
+                            argumentsJson));
+                    }
+                }
+
                 var usage = bedrockResponse.Usage != null
                     ? new Usage(
                         bedrockResponse.Usage.InputTokens,
@@ -129,7 +172,7 @@ public class BedrockChatModel : IChatModel
 
                 return new ChatResponse(
                     textContent,
-                    null,
+                    toolCalls.Count > 0 ? toolCalls : null,
                     usage,
                     modelId,
                     bedrockResponse.StopReason);
