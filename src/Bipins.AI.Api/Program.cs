@@ -33,7 +33,73 @@ if (builder.Environment.IsDevelopment())
 
 // Add services
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(options =>
+{
+    options.SwaggerDoc("v1", new Microsoft.OpenApi.Models.OpenApiInfo
+    {
+        Version = "v1",
+        Title = "Bipins.AI API",
+        Description = "A comprehensive AI platform for RAG (Retrieval-Augmented Generation) with support for multiple LLM providers and vector databases.",
+        Contact = new Microsoft.OpenApi.Models.OpenApiContact
+        {
+            Name = "Bipins.AI Support",
+            Email = "support@bipins.ai"
+        },
+        License = new Microsoft.OpenApi.Models.OpenApiLicense
+        {
+            Name = "MIT",
+            Url = new Uri("https://opensource.org/licenses/MIT")
+        }
+    });
+
+    // Include XML comments
+    var xmlFile = $"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name}.xml";
+    var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
+    if (File.Exists(xmlPath))
+    {
+        options.IncludeXmlComments(xmlPath);
+    }
+
+    // Add security definitions
+    options.AddSecurityDefinition("Basic", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+    {
+        Type = Microsoft.OpenApi.Models.SecuritySchemeType.Http,
+        Scheme = "basic",
+        Description = "Basic authentication using username and password"
+    });
+
+    options.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+    {
+        Type = Microsoft.OpenApi.Models.SecuritySchemeType.Http,
+        Scheme = "bearer",
+        BearerFormat = "JWT",
+        Description = "JWT token authentication"
+    });
+
+    options.AddSecurityDefinition("ApiKey", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+    {
+        Type = Microsoft.OpenApi.Models.SecuritySchemeType.ApiKey,
+        In = Microsoft.OpenApi.Models.ParameterLocation.Header,
+        Name = "X-API-Key",
+        Description = "API key authentication"
+    });
+
+    // Add security requirement
+    options.AddSecurityRequirement(new Microsoft.OpenApi.Models.OpenApiSecurityRequirement
+    {
+        {
+            new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+            {
+                Reference = new Microsoft.OpenApi.Models.OpenApiReference
+                {
+                    Type = Microsoft.OpenApi.Models.ReferenceType.SecurityScheme,
+                    Id = "Basic"
+                }
+            },
+            Array.Empty<string>()
+        }
+    });
+});
 
 // Add health checks
 builder.Services.AddHealthChecks()
@@ -164,6 +230,9 @@ app.Use(async (context, next) =>
 });
 
 // Endpoints
+// Ingests text content into the vector store.
+// This endpoint accepts text content and ingests it into the vector store for later retrieval.
+// The text is automatically chunked, embedded, and indexed.
 app.MapPost("/v1/ingest/text", async (
     HttpContext context,
     IngestionPipeline pipeline,
