@@ -74,7 +74,7 @@ public class ChunkingStrategyTests
     {
         var strategy = new ParagraphChunkingStrategy(_paragraphLogger.Object);
         var text = "First paragraph.\n\nSecond paragraph.\n\nThird paragraph.";
-        var options = new ChunkOptions("test-tenant", "test-doc", ChunkStrategy.Paragraph, MaxSize: 1000, Overlap: 0);
+        var options = new ChunkOptions(1000, 0, ChunkStrategy.Paragraph);
 
         var chunks = await strategy.ChunkAsync(text, options);
 
@@ -94,7 +94,7 @@ public class ChunkingStrategyTests
     {
         var strategy = new MarkdownAwareChunkingStrategy(_markdownLogger.Object);
         var text = "# Heading 1\n\nContent under heading 1.\n\n## Heading 2\n\nContent under heading 2.";
-        var options = new ChunkOptions("test-tenant", "test-doc", ChunkStrategy.MarkdownAware, MaxSize: 1000, Overlap: 0);
+        var options = new ChunkOptions(1000, 0, ChunkStrategy.MarkdownAware);
 
         var chunks = await strategy.ChunkAsync(text, options);
 
