@@ -1,5 +1,5 @@
 using System.Text.Json;
-using Bipins.AI.Connectors.Vector.Qdrant;
+using Bipins.AI.Vectors.Qdrant;
 using Bipins.AI.Core.Vector;
 using Xunit;
 

@@ -17,8 +17,8 @@
     <ProjectReference Include="..\..\src\Bipins.AI.Core\Bipins.AI.Core.csproj" />
     <ProjectReference Include="..\..\src\Bipins.AI.Runtime\Bipins.AI.Runtime.csproj" />
     <ProjectReference Include="..\..\src\Bipins.AI.Ingestion\Bipins.AI.Ingestion.csproj" />
-    <ProjectReference Include="..\..\src\Bipins.AI.Connectors\Bipins.AI.Connectors.Llm.OpenAI\Bipins.AI.Connectors.Llm.OpenAI.csproj" />
-    <ProjectReference Include="..\..\src\Bipins.AI.Connectors\Bipins.AI.Connectors.Vector.Qdrant\Bipins.AI.Connectors.Vector.Qdrant.csproj" />
+    <ProjectReference Include="..\..\src\Bipins.AI.Providers\Bipins.AI.Providers.OpenAI\Bipins.AI.Providers.OpenAI.csproj" />
+    <ProjectReference Include="..\..\src\Bipins.AI.Vectors\Bipins.AI.Vectors.Qdrant\Bipins.AI.Vectors.Qdrant.csproj" />
     <ProjectReference Include="..\..\src\Bipins.AI.Api\Bipins.AI.Api.csproj" />
   </ItemGroup>
 
