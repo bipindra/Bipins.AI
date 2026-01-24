@@ -2,6 +2,8 @@
 
   <PropertyGroup>
     <RootNamespace>Bipins.AI.Providers.OpenAI</RootNamespace>
+    <PackageId>Bipins.AI.Providers.OpenAI</PackageId>
+    <Description>OpenAI provider implementation for Bipins.AI (GPT-4, GPT-3.5, embeddings)</Description>
   </PropertyGroup>
 
   <ItemGroup>

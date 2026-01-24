@@ -2,6 +2,8 @@
 
   <PropertyGroup>
     <RootNamespace>Bipins.AI.Runtime</RootNamespace>
+    <PackageId>Bipins.AI.Runtime</PackageId>
+    <Description>Runtime components for Bipins.AI including pipelines, policies, and RAG composition</Description>
   </PropertyGroup>
 
   <ItemGroup>

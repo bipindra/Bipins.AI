@@ -5,6 +5,8 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <RootNamespace>Bipins.AI.Providers.Bedrock</RootNamespace>
+    <PackageId>Bipins.AI.Providers.Bedrock</PackageId>
+    <Description>AWS Bedrock provider implementation for Bipins.AI (Claude, Llama, Titan models)</Description>
   </PropertyGroup>
 
   <ItemGroup>

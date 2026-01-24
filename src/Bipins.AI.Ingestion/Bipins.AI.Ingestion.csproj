@@ -2,6 +2,8 @@
 
   <PropertyGroup>
     <RootNamespace>Bipins.AI.Ingestion</RootNamespace>
+    <PackageId>Bipins.AI.Ingestion</PackageId>
+    <Description>Document ingestion and chunking services for Bipins.AI</Description>
   </PropertyGroup>
 
   <ItemGroup>

@@ -5,6 +5,8 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <RootNamespace>Bipins.AI.Vectors.Pinecone</RootNamespace>
+    <PackageId>Bipins.AI.Vectors.Pinecone</PackageId>
+    <Description>Pinecone vector database integration for Bipins.AI</Description>
   </PropertyGroup>
 
   <ItemGroup>

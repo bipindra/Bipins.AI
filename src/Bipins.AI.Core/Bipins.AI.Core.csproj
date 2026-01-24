@@ -2,6 +2,8 @@
 
   <PropertyGroup>
     <RootNamespace>Bipins.AI.Core</RootNamespace>
+    <PackageId>Bipins.AI.Core</PackageId>
+    <Description>Core abstractions and models for Bipins.AI platform</Description>
   </PropertyGroup>
 
   <ItemGroup>

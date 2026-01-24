@@ -5,6 +5,8 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <RootNamespace>Bipins.AI.Vectors.Milvus</RootNamespace>
+    <PackageId>Bipins.AI.Vectors.Milvus</PackageId>
+    <Description>Milvus vector database integration for Bipins.AI</Description>
   </PropertyGroup>
 
   <ItemGroup>

@@ -5,6 +5,13 @@ on:
     branches: [ master, main, develop ]
   pull_request:
     branches: [ master, main, develop ]
+  workflow_dispatch:
+    inputs:
+      publish_to_nuget:
+        description: 'Publish packages to NuGet.org'
+        required: false
+        default: 'false'
+        type: boolean
 
 jobs:
   build-and-test:
@@ -17,11 +24,14 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Required for SourceLink
     
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
       with:
         dotnet-version: ${{ matrix.dotnet-version }}
+        source-url: https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json
     
     - name: Restore dependencies
       run: dotnet restore
@@ -29,8 +39,9 @@ jobs:
     - name: Build solution
       run: dotnet build --no-restore --configuration Release
     
-    - name: Run unit tests
-      run: dotnet test --no-build --configuration Release --verbosity normal --logger "trx;LogFileName=test-results.trx" --logger "console;verbosity=normal"
+    - name: Run unit tests (exclude integration tests requiring API credentials)
+      run: dotnet test --no-build --configuration Release --verbosity normal --logger "trx;LogFileName=test-results.trx" --logger "console;verbosity=normal" --filter "FullyQualifiedName!~IntegrationTests" --collect:"XPlat Code Coverage"
+      continue-on-error: false
     
     - name: Publish test results
       uses: EnricoMi/publish-unit-test-result-action@v2
@@ -40,3 +51,42 @@ jobs:
         check_name: 'Unit Test Results'
         comment_mode: 'create new'
         report_individual_runs: true
+    
+    - name: Upload coverage reports
+      uses: codecov/codecov-action@v4
+      if: always()
+      with:
+        files: '**/coverage.cobertura.xml'
+        flags: unittests
+        name: codecov-umbrella
+        fail_ci_if_error: false
+
+  publish-nuget:
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.publish_to_nuget == 'true' || (github.event_name == 'push' && github.ref == 'refs/heads/master' && contains(github.event.head_commit.message, '[publish-nuget]'))
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0.x'
+    
+    - name: Restore dependencies
+      run: dotnet restore
+    
+    - name: Build solution
+      run: dotnet build --no-restore --configuration Release
+    
+    - name: Pack NuGet packages
+      run: dotnet pack --no-build --configuration Release --output ./artifacts
+    
+    - name: Publish to NuGet.org
+      run: dotnet nuget push ./artifacts/*.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
+      env:
+        NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}

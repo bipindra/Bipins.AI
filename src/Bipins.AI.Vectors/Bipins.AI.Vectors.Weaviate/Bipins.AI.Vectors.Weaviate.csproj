@@ -5,6 +5,8 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <RootNamespace>Bipins.AI.Vectors.Weaviate</RootNamespace>
+    <PackageId>Bipins.AI.Vectors.Weaviate</PackageId>
+    <Description>Weaviate vector database integration for Bipins.AI</Description>
   </PropertyGroup>
 
   <ItemGroup>

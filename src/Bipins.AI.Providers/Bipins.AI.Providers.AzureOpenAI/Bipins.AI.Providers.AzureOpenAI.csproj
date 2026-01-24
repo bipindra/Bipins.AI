@@ -5,6 +5,8 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <RootNamespace>Bipins.AI.Providers.AzureOpenAI</RootNamespace>
+    <PackageId>Bipins.AI.Providers.AzureOpenAI</PackageId>
+    <Description>Azure OpenAI provider implementation for Bipins.AI</Description>
   </PropertyGroup>
 
   <ItemGroup>
