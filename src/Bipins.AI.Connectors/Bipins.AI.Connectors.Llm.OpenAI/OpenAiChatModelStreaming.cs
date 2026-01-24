@@ -57,6 +57,17 @@ public class OpenAiChatModelStreaming : IChatModelStreaming
             tools,
             request.ToolChoice != null ? new { type = request.ToolChoice } : null);
 
+        // Handle structured output
+        object? responseFormat = null;
+        if (request.StructuredOutput != null)
+        {
+            responseFormat = new
+            {
+                type = request.StructuredOutput.ResponseFormat,
+                json_schema = request.StructuredOutput.Schema
+            };
+        }
+
         // Add stream parameter to request
         var requestJsonWithStream = JsonSerializer.Serialize(new
         {
@@ -66,6 +77,7 @@ public class OpenAiChatModelStreaming : IChatModelStreaming
             max_tokens = request.MaxTokens,
             tools = tools,
             tool_choice = request.ToolChoice != null ? new { type = request.ToolChoice } : null,
+            response_format = responseFormat,
             stream = true
         });
         var requestContent = new StringContent(requestJsonWithStream, System.Text.Encoding.UTF8, "application/json");

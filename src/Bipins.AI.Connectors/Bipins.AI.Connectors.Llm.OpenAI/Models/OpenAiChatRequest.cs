@@ -11,4 +11,5 @@ internal record OpenAiChatRequest(
     [property: JsonPropertyName("temperature")] float? Temperature = null,
     [property: JsonPropertyName("max_tokens")] int? MaxTokens = null,
     [property: JsonPropertyName("tools")] IReadOnlyList<OpenAiTool>? Tools = null,
-    [property: JsonPropertyName("tool_choice")] object? ToolChoice = null);
+    [property: JsonPropertyName("tool_choice")] object? ToolChoice = null,
+    [property: JsonPropertyName("response_format")] object? ResponseFormat = null);

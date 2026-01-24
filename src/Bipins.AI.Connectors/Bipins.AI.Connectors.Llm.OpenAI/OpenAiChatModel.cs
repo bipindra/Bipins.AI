@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Text.Json;
 using Bipins.AI.Core.Models;
 using Bipins.AI.Connectors.Llm.OpenAI.Models;
 using Microsoft.Extensions.Logging;
@@ -45,6 +46,17 @@ public class OpenAiChatModel : IChatModel
             "function",
             new OpenAiFunction(t.Name, t.Description, t.Parameters))).ToList();
 
+        // Handle structured output
+        object? responseFormat = null;
+        if (request.StructuredOutput != null)
+        {
+            responseFormat = new
+            {
+                type = request.StructuredOutput.ResponseFormat,
+                json_schema = request.StructuredOutput.Schema
+            };
+        }
+
         var openAiRequest = new OpenAiChatRequest(
             request.Metadata?.TryGetValue("modelId", out var modelId) == true
                 ? modelId.ToString() ?? _options.DefaultChatModelId
@@ -53,7 +65,8 @@ public class OpenAiChatModel : IChatModel
             request.Temperature,
             request.MaxTokens,
             tools,
-            request.ToolChoice != null ? new { type = request.ToolChoice } : null);
+            request.ToolChoice != null ? new { type = request.ToolChoice } : null,
+            responseFormat);
 
         var attempt = 0;
         while (attempt < _options.MaxRetries)
@@ -91,8 +104,29 @@ public class OpenAiChatModel : IChatModel
                 var choice = openAiResponse.Choices[0];
                 var message = choice.Message ?? throw new OpenAiException("No message in response");
 
+                // Parse tool calls from message
                 var toolCalls = new List<ToolCall>();
-                // Tool calls would be parsed from message if present
+                if (message.ToolCalls != null && message.ToolCalls.Count > 0)
+                {
+                    foreach (var toolCall in message.ToolCalls)
+                    {
+                        JsonElement argumentsJson;
+                        try
+                        {
+                            argumentsJson = JsonSerializer.Deserialize<JsonElement>(toolCall.Function.Arguments);
+                        }
+                        catch
+                        {
+                            // If parsing fails, wrap in a JSON element
+                            argumentsJson = JsonSerializer.SerializeToElement(toolCall.Function.Arguments);
+                        }
+
+                        toolCalls.Add(new ToolCall(
+                            toolCall.Id,
+                            toolCall.Function.Name,
+                            argumentsJson));
+                    }
+                }
 
                 var usage = openAiResponse.Usage != null
                     ? new Usage(
