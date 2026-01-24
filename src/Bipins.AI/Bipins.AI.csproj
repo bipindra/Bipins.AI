@@ -5,7 +5,21 @@
     <PackageId>Bipins.AI</PackageId>
     <Description>Bipins.AI - Enterprise AI platform for building intelligent applications with RAG (Retrieval-Augmented Generation), multiple LLM providers, and vector databases. Includes Core, Runtime, Ingestion, Providers (OpenAI, Anthropic, Azure OpenAI, Bedrock), and Vector integrations (Qdrant, Pinecone, Weaviate, Milvus).</Description>
     <TargetFramework>net8.0</TargetFramework>
+    <IncludeBuildOutput>true</IncludeBuildOutput>
+    <TargetsForTfmSpecificBuildOutput>$(TargetsForTfmSpecificBuildOutput);IncludeReferencedAssemblies</TargetsForTfmSpecificBuildOutput>
   </PropertyGroup>
+
+  <Target Name="IncludeReferencedAssemblies">
+    <ItemGroup>
+      <!-- Include all referenced project DLLs (excluding NuGet packages) -->
+      <BuildOutputInPackage Include="@(ReferenceCopyLocalPaths-&gt;WithMetadataValue('NuGetPackageId', ''))" 
+                           Condition="'%(ReferenceCopyLocalPaths.Extension)' == '.dll'" />
+      <BuildOutputInPackage Include="@(ReferenceCopyLocalPaths-&gt;WithMetadataValue('NuGetPackageId', ''))" 
+                           Condition="'%(ReferenceCopyLocalPaths.Extension)' == '.pdb'" />
+      <BuildOutputInPackage Include="@(ReferenceCopyLocalPaths-&gt;WithMetadataValue('NuGetPackageId', ''))" 
+                           Condition="'%(ReferenceCopyLocalPaths.Extension)' == '.xml'" />
+    </ItemGroup>
+  </Target>
 
   <ItemGroup>
     <!-- Core Libraries - Include all assets to bundle assemblies -->
