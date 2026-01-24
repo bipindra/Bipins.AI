@@ -13,9 +13,20 @@ public static class ServiceCollectionExtensions
     /// </summary>
     public static IServiceCollection AddBipinsAIIngestion(this IServiceCollection services)
     {
+        // Register chunking strategies
+        services.AddSingleton<Strategies.FixedSizeChunkingStrategy>();
+        services.AddSingleton<Strategies.SentenceAwareChunkingStrategy>();
+        services.AddSingleton<Strategies.ParagraphChunkingStrategy>();
+        services.AddSingleton<Strategies.MarkdownAwareChunkingStrategy>();
+        
+        // Register strategy factory
+        services.AddSingleton<IChunkingStrategyFactory, DefaultChunkingStrategyFactory>();
+        
+        // Register chunker (uses strategy factory)
+        services.AddSingleton<IChunker, MarkdownAwareChunker>();
+        
         services.AddSingleton<IDocumentLoader, TextDocumentLoader>();
         services.AddSingleton<ITextExtractor, MarkdownTextExtractor>();
-        services.AddSingleton<IChunker, MarkdownAwareChunker>();
         services.AddSingleton<IMetadataEnricher, DefaultMetadataEnricher>();
         services.AddSingleton<IIndexer, DefaultIndexer>();
         services.AddSingleton<IDocumentVersionManager, VectorStoreDocumentVersionManager>();

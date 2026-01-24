@@ -18,5 +18,10 @@ public enum ChunkStrategy
     /// <summary>
     /// Chunk by sentences.
     /// </summary>
-    Sentence
+    Sentence,
+
+    /// <summary>
+    /// Chunk by paragraphs.
+    /// </summary>
+    Paragraph
 }

@@ -1,5 +1,6 @@
 using Bipins.AI.Core.Ingestion;
 using Bipins.AI.Ingestion;
+using Bipins.AI.Ingestion.Strategies;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
@@ -9,11 +10,23 @@ namespace Bipins.AI.UnitTests;
 public class ChunkerTests
 {
     private readonly MarkdownAwareChunker _chunker;
+    private readonly IChunkingStrategyFactory _strategyFactory;
 
     public ChunkerTests()
     {
         var logger = new Mock<ILogger<MarkdownAwareChunker>>();
-        _chunker = new MarkdownAwareChunker(logger.Object);
+        var fixedSizeLogger = new Mock<ILogger<FixedSizeChunkingStrategy>>();
+        var markdownLogger = new Mock<ILogger<MarkdownAwareChunkingStrategy>>();
+        
+        var strategies = new List<IChunkingStrategy>
+        {
+            new FixedSizeChunkingStrategy(fixedSizeLogger.Object),
+            new MarkdownAwareChunkingStrategy(markdownLogger.Object)
+        };
+        
+        var factoryLogger = new Mock<ILogger<DefaultChunkingStrategyFactory>>();
+        _strategyFactory = new DefaultChunkingStrategyFactory(strategies, factoryLogger.Object);
+        _chunker = new MarkdownAwareChunker(logger.Object, _strategyFactory);
     }
 
     [Fact]
