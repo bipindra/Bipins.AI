@@ -5,6 +5,9 @@
 artifacts/
 *.nupkg
 *.snupkg
+test-results/
+coverage/
+tools/
 
 # User-specific files
 *.suo

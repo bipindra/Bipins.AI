@@ -33,15 +33,16 @@ jobs:
         dotnet-version: ${{ matrix.dotnet-version }}
         source-url: https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json
     
-    - name: Restore dependencies
-      run: dotnet restore
+    - name: Install Cake
+      uses: cake-build/cake-action@v3
+      with:
+        version: '3.1.0'
     
-    - name: Build solution
-      run: dotnet build --no-restore --configuration Release
-    
-    - name: Run unit tests (exclude integration tests requiring API credentials)
-      run: dotnet test --no-build --configuration Release --verbosity normal --logger "trx;LogFileName=test-results.trx" --logger "console;verbosity=normal" --filter "FullyQualifiedName!~IntegrationTests" --collect:"XPlat Code Coverage"
-      continue-on-error: false
+    - name: Run Cake Build (CI)
+      run: dotnet cake build.cake --target=CI
+      env:
+        PACKAGE_SOURCE_URL: ${{ secrets.PACKAGE_SOURCE_URL }}
+        PACKAGE_API_KEY: ${{ secrets.PACKAGE_API_KEY }}
     
     - name: Publish test results
       uses: EnricoMi/publish-unit-test-result-action@v2
@@ -77,14 +78,13 @@ jobs:
       with:
         dotnet-version: '8.0.x'
     
-    - name: Restore dependencies
-      run: dotnet restore
+    - name: Install Cake
+      uses: cake-build/cake-action@v3
+      with:
+        version: '3.1.0'
     
-    - name: Build solution
-      run: dotnet build --no-restore --configuration Release
-    
-    - name: Pack NuGet package
-      run: dotnet pack src/Bipins.AI/Bipins.AI.csproj --no-build --configuration Release --output ./artifacts
+    - name: Run Cake Build (Pack)
+      run: dotnet cake build.cake --target=Pack --configuration=Release
     
     - name: Configure package source
       id: package_source
@@ -109,25 +109,9 @@ jobs:
           --password "${{ secrets.PACKAGE_API_KEY }}" \
           --store-password-in-clear-text || true
     
-    - name: Publish packages
+    - name: Run Cake Build (Publish)
       run: |
-        PACKAGE_SOURCE="${{ steps.package_source.outputs.source }}"
-        API_KEY="${{ secrets.PACKAGE_API_KEY }}"
-        
-        if [ -z "$API_KEY" ]; then
-          echo "ERROR: PACKAGE_API_KEY secret is required"
-          exit 1
-        fi
-        
-        for nupkg in ./artifacts/*.nupkg; do
-          if [ -f "$nupkg" ]; then
-            echo "Publishing $(basename "$nupkg") to $PACKAGE_SOURCE..."
-            dotnet nuget push "$nupkg" \
-              --api-key "$API_KEY" \
-              --source "$PACKAGE_SOURCE" \
-              --skip-duplicate || echo "Failed to publish $(basename "$nupkg")"
-          fi
-        done
+        dotnet cake build.cake --target=Publish --configuration=Release --publishPackages=true
       env:
         PACKAGE_API_KEY: ${{ secrets.PACKAGE_API_KEY }}
         PACKAGE_SOURCE_URL: ${{ secrets.PACKAGE_SOURCE_URL }}

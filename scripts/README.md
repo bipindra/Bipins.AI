@@ -2,6 +2,66 @@
 
 This directory contains utility scripts for building, testing, and publishing the Bipins.AI project.
 
+## Cake Build System
+
+The project uses [Cake (C# Make)](https://cakebuild.net/) for build automation. The main build script is `build.cake` in the root directory.
+
+### Quick Start
+
+**Windows (PowerShell):**
+```powershell
+.\build.ps1
+```
+
+**Linux/macOS (Bash):**
+```bash
+chmod +x build.sh
+./build.sh
+```
+
+**Using .NET CLI directly:**
+```bash
+dotnet tool install --global Cake.Tool
+dotnet cake build.cake
+```
+
+### Available Cake Targets
+
+- **`Default`** - Builds the solution and runs tests
+- **`Build`** - Builds the solution in Release configuration
+- **`Test`** - Runs unit tests (excluding integration tests)
+- **`Pack`** - Creates NuGet package
+- **`Publish`** - Publishes packages to configured package server
+- **`CI`** - Full CI pipeline (Build → Test → Pack)
+- **`Release`** - Full release pipeline (Build → Test → Pack → Publish)
+
+### Examples
+
+```powershell
+# Build only
+.\build.ps1 --target=Build
+
+# Build and test
+.\build.ps1 --target=Default
+
+# Build, test, and pack
+.\build.ps1 --target=CI
+
+# Build with Debug configuration
+.\build.ps1 --target=Build --configuration=Debug
+
+# Skip tests
+.\build.ps1 --target=Build --skipTests=true
+
+# Publish packages
+.\build.ps1 --target=Release --publishPackages=true --packageApiKey="your-key" --packageSource="https://api.nuget.org/v3/index.json"
+```
+
+### Environment Variables
+
+- `PACKAGE_SOURCE_URL` - Package server URL (defaults to NuGet.org)
+- `PACKAGE_API_KEY` - API key for package server authentication
+
 ## Package Publishing Scripts
 
 The publishing scripts support any NuGet-compatible package server (NuGet.org, GitHub Packages, Azure Artifacts, private feeds, etc.).
