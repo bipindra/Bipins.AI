@@ -1,0 +1,20 @@
+# AWS SAM build artifacts
+.aws-sam/
+samconfig.toml
+
+# CloudFormation/SAM generated files
+packaged.yaml
+packaged-template.yaml
+*.zip
+
+# Environment files
+.env
+.env.local
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.bak
+*~

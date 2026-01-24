@@ -32,7 +32,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       FunctionName: GetCostData
-      CodeUri: ../src/Lambda/GetCostData/
+      CodeUri: ../../src/Lambda/GetCostData/
       Handler: GetCostData::GetCostData.Function::FunctionHandler
       Policies:
         - AWSLambdaBasicExecutionRole
@@ -60,7 +60,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       FunctionName: AnalyzeCosts
-      CodeUri: ../src/Lambda/AnalyzeCosts/
+      CodeUri: ../../src/Lambda/AnalyzeCosts/
       Handler: AnalyzeCosts::AnalyzeCosts.Function::FunctionHandler
       Policies:
         - AWSLambdaBasicExecutionRole
@@ -86,7 +86,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       FunctionName: GetAnalysisHistory
-      CodeUri: ../src/Lambda/GetAnalysisHistory/
+      CodeUri: ../../src/Lambda/GetAnalysisHistory/
       Handler: GetAnalysisHistory::GetAnalysisHistory.Function::FunctionHandler
       Policies:
         - AWSLambdaBasicExecutionRole
