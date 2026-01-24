@@ -46,6 +46,9 @@ public class IngestionPipeline
         ChunkOptions? chunkOptions = null,
         CancellationToken cancellationToken = default)
     {
+        // Validate tenant ID
+        TenantValidator.ValidateOrThrow(options.TenantId);
+
         _logger.LogInformation("Starting ingestion pipeline for {SourceUri}", sourceUri);
 
         // Generate version ID if not provided and version manager is available
@@ -128,6 +131,9 @@ public class IngestionPipeline
         int? maxConcurrency = null,
         CancellationToken cancellationToken = default)
     {
+        // Validate tenant ID
+        TenantValidator.ValidateOrThrow(options.TenantId);
+
         var sourceUriList = sourceUris.ToList();
         _logger.LogInformation("Starting batch ingestion pipeline for {Count} documents", sourceUriList.Count);
 

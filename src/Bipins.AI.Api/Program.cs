@@ -168,6 +168,7 @@ app.MapPost("/v1/ingest/text", async (
     HttpContext context,
     IngestionPipeline pipeline,
     IModelRouter router,
+    ITenantQuotaEnforcer quotaEnforcer,
     JsonDocument request) =>
 {
     var tenantId = context.User.FindFirst("tenantId")?.Value ?? "default";
@@ -177,6 +178,16 @@ app.MapPost("/v1/ingest/text", async (
         ? tenantProp.GetString()
         : null;
     tenantId = tenantIdFromBody ?? tenantId;
+
+    // Validate tenant ID
+    TenantValidator.ValidateOrThrow(tenantId);
+
+    // Check quota
+    if (!await quotaEnforcer.CanIngestDocumentAsync(tenantId, context.RequestAborted))
+    {
+        context.Response.StatusCode = 403;
+        return Results.Json(new { error = "Quota exceeded for tenant" }, statusCode: 403);
+    }
 
     var docId = request.RootElement.TryGetProperty("docId", out var docProp)
         ? docProp.GetString()
@@ -217,6 +228,10 @@ app.MapPost("/v1/ingest/text", async (
         var options = new IndexOptions(tenantId, docId, versionId, null, updateMode, deleteOldVersions);
         var result = await pipeline.IngestAsync(tempFile, options, cancellationToken: context.RequestAborted);
 
+        // Record quota usage
+        var estimatedStorage = result.ChunksIndexed * 1024; // Rough estimate
+        await quotaEnforcer.RecordDocumentIngestionAsync(tenantId, result.ChunksIndexed, estimatedStorage, context.RequestAborted);
+
         var output = new AiOutputEnvelope(
             result.Errors?.Count > 0 ? OutputStatus.Partial : OutputStatus.Success,
             "ingest",
@@ -243,6 +258,7 @@ app.MapPost("/v1/ingest/batch", async (
     HttpContext context,
     IngestionPipeline pipeline,
     IModelRouter router,
+    ITenantQuotaEnforcer quotaEnforcer,
     JsonDocument request) =>
 {
     var tenantId = context.User.FindFirst("tenantId")?.Value ?? "default";
@@ -256,6 +272,15 @@ app.MapPost("/v1/ingest/batch", async (
             ? tenantProp.GetString()
             : null;
         tenantId = tenantIdFromBody ?? tenantId;
+
+        // Validate tenant ID
+        TenantValidator.ValidateOrThrow(tenantId);
+
+        // Check quota
+        if (!await quotaEnforcer.CanIngestDocumentAsync(tenantId, context.RequestAborted))
+        {
+            return Results.Json(new { error = "Quota exceeded for tenant" }, statusCode: 403);
+        }
 
         var docIds = request.RootElement.TryGetProperty("docIds", out var docIdsProp)
             ? JsonSerializer.Deserialize<List<string>>(docIdsProp.GetRawText())
@@ -312,6 +337,10 @@ app.MapPost("/v1/ingest/batch", async (
                     maxConcurrency: maxConcurrency,
                     cancellationToken: context.RequestAborted);
 
+                // Record quota usage
+                var estimatedStorageBatch = result.TotalChunksIndexed * 1024; // Rough estimate
+                await quotaEnforcer.RecordDocumentIngestionAsync(tenantId, result.TotalChunksIndexed, estimatedStorageBatch, context.RequestAborted);
+
                 var output = new AiOutputEnvelope(
                     result.Errors.Count > 0 ? OutputStatus.Partial : OutputStatus.Success,
                     "ingest.batch",
@@ -349,6 +378,10 @@ app.MapPost("/v1/ingest/batch", async (
             indexOptions,
             maxConcurrency: maxConcurrency,
             cancellationToken: context.RequestAborted);
+
+        // Record quota usage
+        var estimatedStorageBatch2 = batchResult.TotalChunksIndexed * 1024; // Rough estimate
+        await quotaEnforcer.RecordDocumentIngestionAsync(tenantId, batchResult.TotalChunksIndexed, estimatedStorageBatch2, context.RequestAborted);
 
         var batchOutput = new AiOutputEnvelope(
             batchResult.Errors.Count > 0 ? OutputStatus.Partial : OutputStatus.Success,
@@ -395,7 +428,10 @@ app.MapPost("/v1/chat/stream", async (
             return Results.BadRequest(new { error = "Invalid input envelope" });
         }
 
-        tenantId = input.TenantId;
+        tenantId = input.TenantId ?? context.User.FindFirst("tenantId")?.Value ?? "default";
+
+        // Validate tenant ID
+        TenantValidator.ValidateOrThrow(tenantId);
 
         // Parse chat request from payload
         var chatRequestJson = input.Payload;
@@ -419,6 +455,14 @@ app.MapPost("/v1/chat/stream", async (
 
         // Compose augmented request
         var augmentedRequest = composer.Compose(chatRequest, retrieved);
+
+        // Check quota
+        var estimatedTokens = augmentedRequest.Messages.Sum(m => m.Content?.Length ?? 0) / 4; // Rough estimate
+        var quotaEnforcer = context.RequestServices.GetRequiredService<ITenantQuotaEnforcer>();
+        if (!await quotaEnforcer.CanMakeChatRequestAsync(tenantId, estimatedTokens, context.RequestAborted))
+        {
+            return Results.Json(new { error = "Quota exceeded for tenant" }, statusCode: 403);
+        }
 
         // Generate streaming response
         var chatModel = await router.SelectChatModelAsync(tenantId, augmentedRequest, context.RequestAborted);
@@ -547,9 +591,21 @@ app.MapPost("/v1/chat", async (
         // Compose augmented request
         var augmentedRequest = composer.Compose(chatRequest, retrieved);
 
+        // Check quota
+        var estimatedTokens = augmentedRequest.Messages.Sum(m => m.Content?.Length ?? 0) / 4; // Rough estimate
+        var quotaEnforcer = context.RequestServices.GetRequiredService<ITenantQuotaEnforcer>();
+        if (!await quotaEnforcer.CanMakeChatRequestAsync(tenantId, estimatedTokens, context.RequestAborted))
+        {
+            return Results.Json(new { error = "Quota exceeded for tenant" }, statusCode: 403);
+        }
+
         // Generate response
         var chatModel = await router.SelectChatModelAsync(tenantId, augmentedRequest, context.RequestAborted);
         var response = await chatModel.GenerateAsync(augmentedRequest, context.RequestAborted);
+
+        // Record quota usage
+        var tokensUsed = response.Usage?.TotalTokens ?? estimatedTokens;
+        await quotaEnforcer.RecordChatRequestAsync(tenantId, tokensUsed, context.RequestAborted);
 
         // Parse structured output if requested
         JsonElement? parsedStructuredOutput = null;
@@ -685,6 +741,171 @@ app.MapGet("/v1/documents/{docId}/versions", async (
 .WithName("ListDocumentVersions")
 .WithOpenApi();
 
+// Tenant management endpoints
+app.MapGet("/v1/tenants/{tenantId}", async (
+    HttpContext context,
+    string tenantId,
+    ITenantManager tenantManager) =>
+{
+    using var activity = BipinsAiActivitySource.Instance.StartActivity("api.tenants.get");
+
+    try
+    {
+        // Validate tenant ID
+        TenantValidator.ValidateOrThrow(tenantId);
+
+        var tenant = await tenantManager.GetTenantAsync(tenantId, context.RequestAborted);
+
+        if (tenant == null)
+        {
+            return Results.NotFound(new { error = $"Tenant {tenantId} not found" });
+        }
+
+        var output = new AiOutputEnvelope(
+            OutputStatus.Success,
+            "tenant",
+            JsonSerializer.SerializeToElement(tenant));
+
+        return Results.Ok(output);
+    }
+    catch (Exception ex)
+    {
+        activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+        var logger = context.RequestServices.GetRequiredService<ILogger<Program>>();
+        logger.LogError(ex, "Error getting tenant {TenantId}", tenantId);
+        return Results.Problem(
+            detail: ex.Message,
+            statusCode: 500);
+    }
+})
+.RequireAuthorization("Admin")
+.WithName("GetTenant")
+.WithOpenApi();
+
+app.MapPost("/v1/tenants", async (
+    HttpContext context,
+    ITenantManager tenantManager,
+    JsonDocument request) =>
+{
+    using var activity = BipinsAiActivitySource.Instance.StartActivity("api.tenants.create");
+
+    try
+    {
+        var tenantId = request.RootElement.TryGetProperty("tenantId", out var tenantIdProp)
+            ? tenantIdProp.GetString()
+            : null;
+
+        if (string.IsNullOrEmpty(tenantId))
+        {
+            return Results.BadRequest(new { error = "tenantId is required" });
+        }
+
+        // Validate tenant ID
+        TenantValidator.ValidateOrThrow(tenantId);
+
+        var name = request.RootElement.TryGetProperty("name", out var nameProp)
+            ? nameProp.GetString() ?? tenantId
+            : tenantId;
+
+        var quotas = request.RootElement.TryGetProperty("quotas", out var quotasProp)
+            ? JsonSerializer.Deserialize<TenantQuotas>(quotasProp.GetRawText())
+            : null;
+
+        var metadata = request.RootElement.TryGetProperty("metadata", out var metadataProp)
+            ? JsonSerializer.Deserialize<Dictionary<string, object>>(metadataProp.GetRawText())
+            : null;
+
+        var tenantInfo = new TenantInfo(
+            tenantId,
+            name,
+            DateTimeOffset.UtcNow,
+            quotas,
+            metadata);
+
+        await tenantManager.RegisterTenantAsync(tenantInfo, context.RequestAborted);
+
+        var output = new AiOutputEnvelope(
+            OutputStatus.Success,
+            "tenant",
+            JsonSerializer.SerializeToElement(tenantInfo));
+
+        return Results.Created($"/v1/tenants/{tenantId}", output);
+    }
+    catch (Exception ex)
+    {
+        activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+        var logger = context.RequestServices.GetRequiredService<ILogger<Program>>();
+        logger.LogError(ex, "Error creating tenant");
+        return Results.Problem(
+            detail: ex.Message,
+            statusCode: 500);
+    }
+})
+.RequireAuthorization("Admin")
+.WithName("CreateTenant")
+.WithOpenApi();
+
+app.MapPut("/v1/tenants/{tenantId}", async (
+    HttpContext context,
+    string tenantId,
+    ITenantManager tenantManager,
+    JsonDocument request) =>
+{
+    using var activity = BipinsAiActivitySource.Instance.StartActivity("api.tenants.update");
+
+    try
+    {
+        // Validate tenant ID
+        TenantValidator.ValidateOrThrow(tenantId);
+
+        var existingTenant = await tenantManager.GetTenantAsync(tenantId, context.RequestAborted);
+        if (existingTenant == null)
+        {
+            return Results.NotFound(new { error = $"Tenant {tenantId} not found" });
+        }
+
+        var name = request.RootElement.TryGetProperty("name", out var nameProp)
+            ? nameProp.GetString() ?? existingTenant.Name
+            : existingTenant.Name;
+
+        var quotas = request.RootElement.TryGetProperty("quotas", out var quotasProp)
+            ? JsonSerializer.Deserialize<TenantQuotas>(quotasProp.GetRawText())
+            : existingTenant.Quotas;
+
+        var metadata = request.RootElement.TryGetProperty("metadata", out var metadataProp)
+            ? JsonSerializer.Deserialize<Dictionary<string, object>>(metadataProp.GetRawText())
+            : existingTenant.Metadata;
+
+        var updatedTenant = existingTenant with
+        {
+            Name = name,
+            Quotas = quotas,
+            Metadata = metadata
+        };
+
+        await tenantManager.UpdateTenantAsync(updatedTenant, context.RequestAborted);
+
+        var output = new AiOutputEnvelope(
+            OutputStatus.Success,
+            "tenant",
+            JsonSerializer.SerializeToElement(updatedTenant));
+
+        return Results.Ok(output);
+    }
+    catch (Exception ex)
+    {
+        activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+        var logger = context.RequestServices.GetRequiredService<ILogger<Program>>();
+        logger.LogError(ex, "Error updating tenant {TenantId}", tenantId);
+        return Results.Problem(
+            detail: ex.Message,
+            statusCode: 500);
+    }
+})
+.RequireAuthorization("Admin")
+.WithName("UpdateTenant")
+.WithOpenApi();
+
 app.MapGet("/v1/documents/{docId}/versions/{versionId}", async (
     HttpContext context,
     string docId,
@@ -692,6 +913,9 @@ app.MapGet("/v1/documents/{docId}/versions/{versionId}", async (
     IDocumentVersionManager versionManager) =>
 {
     var tenantId = context.User.FindFirst("tenantId")?.Value ?? "default";
+
+    // Validate tenant ID
+    TenantValidator.ValidateOrThrow(tenantId);
 
     using var activity = BipinsAiActivitySource.Instance.StartActivity("api.documents.versions.get");
 

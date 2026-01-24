@@ -30,6 +30,8 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IMetadataEnricher, DefaultMetadataEnricher>();
         services.AddSingleton<IIndexer, DefaultIndexer>();
         services.AddSingleton<IDocumentVersionManager, VectorStoreDocumentVersionManager>();
+        services.AddSingleton<ITenantManager, InMemoryTenantManager>();
+        services.AddSingleton<ITenantQuotaEnforcer, TenantQuotaEnforcer>();
         services.AddSingleton<IngestionPipeline>();
 
         return services;
