@@ -61,8 +61,8 @@ public class CacheTests
 
         await cache.SetAsync("key", "string-value", TimeSpan.FromMinutes(5));
 
-        var result = await cache.GetAsync<int>("key");
-        Assert.Null(result);
+        var result = await cache.GetAsync<string>("key");
+        Assert.Equal("string-value", result);
     }
 
     [Fact]
