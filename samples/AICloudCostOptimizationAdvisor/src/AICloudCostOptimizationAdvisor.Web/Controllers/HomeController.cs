@@ -93,7 +93,15 @@ public class HomeController : Controller
             {
                 try
                 {
-                    analysis = await _aiAnalysis.AnalyzeAsync(analysis, cancellationToken: cancellationToken);
+                    var includeSecurityRisks = input.Options?.IncludeSecurityRisks ?? false;
+                    var includeMermaidDiagrams = input.Options?.IncludeMermaidDiagrams ?? false;
+                    
+                    analysis = await _aiAnalysis.AnalyzeAsync(
+                        analysis, 
+                        modelId: null,
+                        includeSecurityRisks: includeSecurityRisks,
+                        includeMermaidDiagrams: includeMermaidDiagrams,
+                        cancellationToken: cancellationToken);
                 }
                 catch (Exception ex)
                 {

@@ -45,4 +45,14 @@ public class AnalysisOptions
     /// Include optimization suggestions.
     /// </summary>
     public bool IncludeOptimizations { get; set; } = true;
+
+    /// <summary>
+    /// Include security risk analysis.
+    /// </summary>
+    public bool IncludeSecurityRisks { get; set; } = false;
+
+    /// <summary>
+    /// Include Mermaid.js diagrams for before/after infrastructure visualization.
+    /// </summary>
+    public bool IncludeMermaidDiagrams { get; set; } = false;
 }

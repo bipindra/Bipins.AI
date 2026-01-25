@@ -59,6 +59,21 @@ public class TerraformAnalysis
     /// Error message if analysis failed.
     /// </summary>
     public string? ErrorMessage { get; set; }
+
+    /// <summary>
+    /// Security risks identified in the infrastructure.
+    /// </summary>
+    public List<SecurityRisk> SecurityRisks { get; set; } = new();
+
+    /// <summary>
+    /// Mermaid.js diagram code for the current (before optimization) infrastructure architecture.
+    /// </summary>
+    public string? MermaidDiagramBefore { get; set; }
+
+    /// <summary>
+    /// Mermaid.js diagram code for the optimized (after optimization) infrastructure architecture.
+    /// </summary>
+    public string? MermaidDiagramAfter { get; set; }
 }
 
 /// <summary>

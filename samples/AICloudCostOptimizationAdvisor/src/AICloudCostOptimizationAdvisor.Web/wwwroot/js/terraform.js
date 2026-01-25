@@ -67,13 +67,17 @@ terraformApp.analyze = function() {
         .then(function(content) {
             var providers = terraformApp.getSelectedProviders();
             var includeOptimizations = $('#includeOptimizations').is(':checked');
+            var includeSecurityRisks = $('#includeSecurityRisks').is(':checked');
+            var includeMermaidDiagrams = $('#includeMermaidDiagrams').is(':checked');
             
             // Determine if content is URL or actual content
             var input = {
                 cloudProviders: providers,
                 options: {
                     timePeriod: 'Monthly',
-                    includeOptimizations: includeOptimizations
+                    includeOptimizations: includeOptimizations,
+                    includeSecurityRisks: includeSecurityRisks,
+                    includeMermaidDiagrams: includeMermaidDiagrams
                 }
             };
             

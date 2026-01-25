@@ -15,23 +15,25 @@ builder.Services.AddMemoryCache();
 builder.Services.AddHttpClient();
 
 // Configure Bipins.AI with OpenAI provider
+// Configuration priority: User Secrets (Development) > Environment Variables > appsettings.json
 builder.Services
     .AddBipinsAI()
     .AddOpenAI(o =>
     {
-        o.ApiKey = builder.Configuration.GetValue<string>("OpenAI:ApiKey") 
+        // Get API key from User Secrets (Development), Environment Variables, or appsettings.json
+        o.ApiKey = builder.Configuration["OpenAI:ApiKey"] 
                    ?? Environment.GetEnvironmentVariable("OPENAI_API_KEY") 
                    ?? string.Empty; // Allow app to run without API key (AI features will be disabled)
         
-        o.BaseUrl = builder.Configuration.GetValue<string>("OpenAI:BaseUrl") 
+        o.BaseUrl = builder.Configuration["OpenAI:BaseUrl"] 
                     ?? Environment.GetEnvironmentVariable("OPENAI_BASE_URL") 
                     ?? "https://api.openai.com/v1";
         
-        o.DefaultChatModelId = builder.Configuration.GetValue<string>("OpenAI:DefaultChatModelId") 
+        o.DefaultChatModelId = builder.Configuration["OpenAI:DefaultChatModelId"] 
                                ?? Environment.GetEnvironmentVariable("OPENAI_DEFAULT_CHAT_MODEL_ID") 
                                ?? "gpt-4o-mini";
         
-        o.DefaultEmbeddingModelId = builder.Configuration.GetValue<string>("OpenAI:DefaultEmbeddingModelId") 
+        o.DefaultEmbeddingModelId = builder.Configuration["OpenAI:DefaultEmbeddingModelId"] 
                                     ?? Environment.GetEnvironmentVariable("OPENAI_DEFAULT_EMBEDDING_MODEL_ID") 
                                     ?? "text-embedding-ada-002";
         

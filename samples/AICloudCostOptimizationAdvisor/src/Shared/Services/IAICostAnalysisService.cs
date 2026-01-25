@@ -13,6 +13,8 @@ public interface IAICostAnalysisService
     Task<TerraformAnalysis> AnalyzeAsync(
         TerraformAnalysis analysis,
         string? modelId = null,
+        bool includeSecurityRisks = false,
+        bool includeMermaidDiagrams = false,
         CancellationToken cancellationToken = default);
 
     /// <summary>

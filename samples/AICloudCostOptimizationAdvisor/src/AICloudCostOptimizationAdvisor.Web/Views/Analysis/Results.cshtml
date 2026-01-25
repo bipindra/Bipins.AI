@@ -110,6 +110,61 @@
     </div>
 }
 
+@if (Model.SecurityRisks.Any())
+{
+    <div class="card mb-4">
+        <div class="card-header bg-danger text-white">
+            <h5 class="mb-0"><i class="bi bi-shield-exclamation"></i> Security Risks</h5>
+        </div>
+        <div class="card-body">
+            @foreach (var risk in Model.SecurityRisks.OrderByDescending(r => r.Severity == "Critical").ThenByDescending(r => r.Severity == "High").ThenByDescending(r => r.Severity == "Medium"))
+            {
+                <div class="card mb-3 border-@(risk.Severity == "Critical" ? "danger" : risk.Severity == "High" ? "warning" : risk.Severity == "Medium" ? "info" : "secondary")">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div class="flex-grow-1">
+                                <h6 class="card-title">
+                                    <span class="badge bg-@(risk.Severity == "Critical" ? "danger" : risk.Severity == "High" ? "warning" : risk.Severity == "Medium" ? "info" : "secondary")">
+                                        @risk.Severity
+                                    </span>
+                                    <span class="badge bg-secondary">@risk.Category</span>
+                                    @if (!string.IsNullOrEmpty(risk.CloudProvider))
+                                    {
+                                        <span class="badge bg-primary">@risk.CloudProvider</span>
+                                    }
+                                </h6>
+                                <p class="card-text mb-2"><strong>Issue:</strong> @risk.Issue</p>
+                                <p class="card-text">@risk.Description</p>
+                                @if (risk.Recommendations.Any())
+                                {
+                                    <div class="mt-2">
+                                        <strong>Recommendations:</strong>
+                                        <ul class="mb-0">
+                                            @foreach (var recommendation in risk.Recommendations)
+                                            {
+                                                <li>@recommendation</li>
+                                            }
+                                        </ul>
+                                    </div>
+                                }
+                                @if (risk.ComplianceFrameworks.Any())
+                                {
+                                    <div class="mt-2">
+                                        @foreach (var framework in risk.ComplianceFrameworks)
+                                        {
+                                            <span class="badge bg-warning text-dark">@framework</span>
+                                        }
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+}
+
 @if (Model.Optimizations.Any())
 {
     <div class="card mb-4">
@@ -155,6 +210,35 @@
     </div>
 }
 
+@if (!string.IsNullOrEmpty(Model.MermaidDiagramBefore) || !string.IsNullOrEmpty(Model.MermaidDiagramAfter))
+{
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="bi bi-diagram-3"></i> Architecture Diagrams</h5>
+        </div>
+        <div class="card-body">
+            @if (!string.IsNullOrEmpty(Model.MermaidDiagramBefore))
+            {
+                <div class="mb-4">
+                    <h6 class="mb-3">Current Architecture (Before Optimization)</h6>
+                    <div class="mermaid" id="mermaid-before">
+                        @Html.Raw(Model.MermaidDiagramBefore)
+                    </div>
+                </div>
+            }
+            @if (!string.IsNullOrEmpty(Model.MermaidDiagramAfter))
+            {
+                <div>
+                    <h6 class="mb-3">Optimized Architecture (After Optimization)</h6>
+                    <div class="mermaid" id="mermaid-after">
+                        @Html.Raw(Model.MermaidDiagramAfter)
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+}
+
 <div class="mt-4">
     <a href="/" class="btn btn-secondary">
         <i class="bi bi-arrow-left"></i> Back to Home
@@ -165,6 +249,19 @@
     <script>
         $(document).ready(function() {
             analysisApp.renderCharts(@Html.Raw(Json.Serialize(Model)));
+            
+            // Initialize Mermaid.js
+            if (typeof mermaid !== 'undefined') {
+                mermaid.initialize({ 
+                    startOnLoad: true,
+                    theme: 'default',
+                    flowchart: {
+                        useMaxWidth: true,
+                        htmlLabels: true,
+                        curve: 'basis'
+                    }
+                });
+            }
         });
     </script>
 }

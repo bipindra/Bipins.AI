@@ -30,17 +30,19 @@ public class AICostAnalysisService : IAICostAnalysisService
     public async Task<TerraformAnalysis> AnalyzeAsync(
         TerraformAnalysis analysis,
         string? modelId = null,
+        bool includeSecurityRisks = false,
+        bool includeMermaidDiagrams = false,
         CancellationToken cancellationToken = default)
     {
         var model = modelId ?? _defaultModelId;
-        var prompt = BuildAnalysisPrompt(analysis);
+        var prompt = BuildAnalysisPrompt(analysis, includeSecurityRisks, includeMermaidDiagrams);
 
         var chatRequest = new ChatRequest(
             Messages: new List<Message>
             {
                 new Message(MessageRole.User, prompt)
             },
-            MaxTokens: 4096,
+            MaxTokens: 8192, // Increased for Mermaid diagrams
             Temperature: 0.7f,
             Metadata: new Dictionary<string, object>
             {
@@ -55,7 +57,7 @@ public class AICostAnalysisService : IAICostAnalysisService
             throw new InvalidOperationException("Invalid response from AI model");
         }
 
-        ParseOptimizationResponse(chatResponse.Content, analysis);
+        ParseOptimizationResponse(chatResponse.Content, analysis, includeSecurityRisks, includeMermaidDiagrams);
 
         return analysis;
     }
@@ -99,14 +101,15 @@ public class AICostAnalysisService : IAICostAnalysisService
                 var fullContent = accumulatedContent.ToString();
                 if (!string.IsNullOrEmpty(fullContent))
                 {
-                    ParseOptimizationResponse(fullContent, analysis);
+                    // Note: Streaming doesn't support options yet, defaulting to false
+                    ParseOptimizationResponse(fullContent, analysis, false, false);
                     yield return analysis;
                 }
             }
         }
     }
 
-    private string BuildAnalysisPrompt(TerraformAnalysis analysis)
+    private string BuildAnalysisPrompt(TerraformAnalysis analysis, bool includeSecurityRisks = false, bool includeMermaidDiagrams = false)
     {
         var costSummary = new System.Text.StringBuilder();
         costSummary.AppendLine("## Cloud Cost Summary");
@@ -135,40 +138,90 @@ public class AICostAnalysisService : IAICostAnalysisService
             resourcesSummary.AppendLine($"- {resource.ResourceType} ({resource.CloudProvider}): {resource.ResourceId}");
         }
 
-        return $@"You are a cloud cost optimization expert. Analyze the following Terraform infrastructure and cost data to provide optimization suggestions.
+        var promptBuilder = new System.Text.StringBuilder();
+        promptBuilder.AppendLine("You are a cloud cost optimization and security expert. Analyze the following Terraform infrastructure and cost data.");
+        promptBuilder.AppendLine();
+        promptBuilder.AppendLine(costSummary.ToString());
+        promptBuilder.AppendLine();
+        promptBuilder.AppendLine(resourcesSummary.ToString());
+        promptBuilder.AppendLine();
+        promptBuilder.AppendLine("Based on this infrastructure, provide analysis in the following JSON format:");
+        promptBuilder.AppendLine("{");
+        promptBuilder.AppendLine("  \"summary\": \"Overall summary of the cost analysis and key optimization opportunities\",");
+        promptBuilder.AppendLine("  \"optimizations\": [");
+        promptBuilder.AppendLine("    {");
+        promptBuilder.AppendLine("      \"category\": \"Compute|Storage|Network|Other\",");
+        promptBuilder.AppendLine("      \"description\": \"Detailed description of the optimization opportunity\",");
+        promptBuilder.AppendLine("      \"estimatedSavings\": \"Estimated savings (e.g., $50-100/month)\",");
+        promptBuilder.AppendLine("      \"priority\": \"High|Medium|Low\",");
+        promptBuilder.AppendLine("      \"actions\": [\"action1\", \"action2\"],");
+        promptBuilder.AppendLine("      \"relatedResources\": [\"resource-id-1\", \"resource-id-2\"],");
+        promptBuilder.AppendLine("      \"cloudProvider\": \"AWS|Azure|GCP\"");
+        promptBuilder.AppendLine("    }");
+        promptBuilder.AppendLine("  ]");
 
-{costSummary}
+        if (includeSecurityRisks)
+        {
+            promptBuilder.AppendLine("  ,\"securityRisks\": [");
+            promptBuilder.AppendLine("    {");
+            promptBuilder.AppendLine("      \"severity\": \"Critical|High|Medium|Low\",");
+            promptBuilder.AppendLine("      \"category\": \"Access Control|Encryption|Network|Compliance|Other\",");
+            promptBuilder.AppendLine("      \"description\": \"Description of the security risk\",");
+            promptBuilder.AppendLine("      \"issue\": \"Specific security issue identified\",");
+            promptBuilder.AppendLine("      \"recommendations\": [\"recommendation1\", \"recommendation2\"],");
+            promptBuilder.AppendLine("      \"relatedResources\": [\"resource-id-1\"],");
+            promptBuilder.AppendLine("      \"cloudProvider\": \"AWS|Azure|GCP\",");
+            promptBuilder.AppendLine("      \"complianceFrameworks\": [\"PCI-DSS\", \"HIPAA\"]");
+            promptBuilder.AppendLine("    }");
+            promptBuilder.AppendLine("  ]");
+        }
 
-{resourcesSummary}
+        if (includeMermaidDiagrams)
+        {
+            promptBuilder.AppendLine("  ,\"mermaidDiagramBefore\": \"Mermaid.js diagram code for current infrastructure architecture\",");
+            promptBuilder.AppendLine("  \"mermaidDiagramAfter\": \"Mermaid.js diagram code for optimized infrastructure architecture\"");
+        }
 
-Based on this infrastructure, provide optimization suggestions in the following JSON format:
-{{
-  ""summary"": ""Overall summary of the cost analysis and key optimization opportunities"",
-  ""optimizations"": [
-    {{
-      ""category"": ""Compute|Storage|Network|Other"",
-      ""description"": ""Detailed description of the optimization opportunity"",
-      ""estimatedSavings"": ""Estimated savings (e.g., $50-100/month)"",
-      ""priority"": ""High|Medium|Low"",
-      ""actions"": [""action1"", ""action2""],
-      ""relatedResources"": [""resource-id-1"", ""resource-id-2""],
-      ""cloudProvider"": ""AWS|Azure|GCP""
-    }}
-  ]
-}}
+        promptBuilder.AppendLine("}");
+        promptBuilder.AppendLine();
+        promptBuilder.AppendLine("Focus on cost optimization:");
+        promptBuilder.AppendLine("1. Right-sizing resources (instances, storage)");
+        promptBuilder.AppendLine("2. Reserved instances vs on-demand");
+        promptBuilder.AppendLine("3. Storage optimization (tiering, lifecycle policies)");
+        promptBuilder.AppendLine("4. Unused or idle resources");
+        promptBuilder.AppendLine("5. Network optimization");
+        promptBuilder.AppendLine("6. Cost-effective alternatives");
 
-Focus on:
-1. Right-sizing resources (instances, storage)
-2. Reserved instances vs on-demand
-3. Storage optimization (tiering, lifecycle policies)
-4. Unused or idle resources
-5. Network optimization
-6. Cost-effective alternatives
+        if (includeSecurityRisks)
+        {
+            promptBuilder.AppendLine();
+            promptBuilder.AppendLine("Also identify security risks:");
+            promptBuilder.AppendLine("1. Insecure access controls (public S3 buckets, open security groups)");
+            promptBuilder.AppendLine("2. Missing encryption (data at rest, in transit)");
+            promptBuilder.AppendLine("3. Network security issues (exposed ports, missing firewalls)");
+            promptBuilder.AppendLine("4. Compliance violations (PCI-DSS, HIPAA, SOC 2)");
+            promptBuilder.AppendLine("5. Identity and access management issues");
+            promptBuilder.AppendLine("6. Logging and monitoring gaps");
+        }
 
-Provide actionable, specific recommendations with estimated savings.";
+        if (includeMermaidDiagrams)
+        {
+            promptBuilder.AppendLine();
+            promptBuilder.AppendLine("Generate Mermaid.js diagrams:");
+            promptBuilder.AppendLine("- Use graph TD or graph LR format");
+            promptBuilder.AppendLine("- Include all major resources (VMs, databases, storage, networking)");
+            promptBuilder.AppendLine("- Show relationships and data flow");
+            promptBuilder.AppendLine("- Use clear, descriptive labels");
+            promptBuilder.AppendLine("- For 'after' diagram, show the optimized architecture with improvements highlighted");
+        }
+
+        promptBuilder.AppendLine();
+        promptBuilder.AppendLine("Provide actionable, specific recommendations with estimated savings.");
+
+        return promptBuilder.ToString();
     }
 
-    private void ParseOptimizationResponse(string content, TerraformAnalysis analysis)
+    private void ParseOptimizationResponse(string content, TerraformAnalysis analysis, bool includeSecurityRisks = false, bool includeMermaidDiagrams = false)
     {
         try
         {
@@ -181,6 +234,12 @@ Provide actionable, specific recommendations with estimated savings.";
                 content = content.Substring(jsonStart, jsonEnd - jsonStart);
             }
 
+            // Also try to extract Mermaid diagrams from markdown code blocks if not in JSON
+            if (includeMermaidDiagrams && (string.IsNullOrEmpty(analysis.MermaidDiagramBefore) || string.IsNullOrEmpty(analysis.MermaidDiagramAfter)))
+            {
+                ExtractMermaidDiagrams(content, analysis);
+            }
+
             var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
             var response = JsonSerializer.Deserialize<OptimizationResponse>(content, options);
 
@@ -188,6 +247,23 @@ Provide actionable, specific recommendations with estimated savings.";
             {
                 analysis.Summary = response.Summary ?? string.Empty;
                 analysis.Optimizations = response.Optimizations ?? new List<OptimizationSuggestion>();
+                
+                if (includeSecurityRisks)
+                {
+                    analysis.SecurityRisks = response.SecurityRisks ?? new List<SecurityRisk>();
+                }
+
+                if (includeMermaidDiagrams)
+                {
+                    if (!string.IsNullOrEmpty(response.MermaidDiagramBefore))
+                    {
+                        analysis.MermaidDiagramBefore = response.MermaidDiagramBefore;
+                    }
+                    if (!string.IsNullOrEmpty(response.MermaidDiagramAfter))
+                    {
+                        analysis.MermaidDiagramAfter = response.MermaidDiagramAfter;
+                    }
+                }
             }
             else
             {
@@ -204,9 +280,29 @@ Provide actionable, specific recommendations with estimated savings.";
         }
     }
 
+    private void ExtractMermaidDiagrams(string content, TerraformAnalysis analysis)
+    {
+        // Try to extract Mermaid diagrams from markdown code blocks
+        var mermaidPattern = @"```mermaid\s*\n(.*?)```";
+        var matches = System.Text.RegularExpressions.Regex.Matches(content, mermaidPattern, System.Text.RegularExpressions.RegexOptions.Singleline | System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        
+        if (matches.Count >= 1 && string.IsNullOrEmpty(analysis.MermaidDiagramBefore))
+        {
+            analysis.MermaidDiagramBefore = matches[0].Groups[1].Value.Trim();
+        }
+        
+        if (matches.Count >= 2 && string.IsNullOrEmpty(analysis.MermaidDiagramAfter))
+        {
+            analysis.MermaidDiagramAfter = matches[1].Groups[1].Value.Trim();
+        }
+    }
+
     private class OptimizationResponse
     {
         public string? Summary { get; set; }
         public List<OptimizationSuggestion>? Optimizations { get; set; }
+        public List<SecurityRisk>? SecurityRisks { get; set; }
+        public string? MermaidDiagramBefore { get; set; }
+        public string? MermaidDiagramAfter { get; set; }
     }
 }

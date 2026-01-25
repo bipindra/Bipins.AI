@@ -2,7 +2,61 @@
 
 A web application that analyzes Terraform infrastructure scripts and provides AI-powered cost optimization suggestions for AWS, Azure, and GCP using OpenAI via Bipins.AI.
 
-## Features
+## Business Features
+
+### 💰 Cost Optimization & Savings
+- **Automated Cost Analysis**: Instantly calculate estimated monthly and annual costs for your cloud infrastructure before deployment
+- **AI-Powered Optimization Recommendations**: Receive intelligent, prioritized suggestions to reduce cloud spending with estimated savings
+- **Multi-Cloud Cost Comparison**: Analyze and compare costs across AWS, Azure, and GCP in a single view
+- **Right-Sizing Recommendations**: Get suggestions for optimal resource sizing to eliminate waste and reduce costs
+
+### 🔒 Security Risk Assessment
+- **Proactive Security Analysis**: Identify security vulnerabilities and compliance risks in your infrastructure before deployment
+- **Risk Prioritization**: Receive security risks categorized by severity (Critical, High, Medium, Low) for focused remediation
+- **Compliance Framework Mapping**: Understand which compliance frameworks (PCI-DSS, HIPAA, SOC 2) are affected by identified risks
+- **Actionable Remediation Steps**: Get specific recommendations to address each security issue
+
+### 📊 Visual Architecture Insights
+- **Before/After Architecture Diagrams**: Visualize your current infrastructure and optimized architecture using Mermaid.js diagrams
+- **Cost Breakdown Visualization**: Interactive charts showing costs by service, region, and resource type
+- **Resource Inventory**: Complete overview of all cloud resources with associated costs
+
+### ⚡ Operational Efficiency
+- **Rapid Infrastructure Analysis**: Analyze Terraform scripts in seconds without manual cost calculations
+- **Multiple Input Methods**: Upload files, paste code, or provide URLs for maximum flexibility
+- **No Manual Configuration Required**: Automatic resource detection and cost calculation
+- **Instant Results**: Get comprehensive analysis results immediately after submission
+
+### 🎯 Business Value
+- **Reduce Cloud Costs**: Identify opportunities to save 20-40% on cloud infrastructure costs
+- **Prevent Security Breaches**: Catch security misconfigurations before they become vulnerabilities
+- **Improve Compliance Posture**: Ensure infrastructure meets regulatory requirements
+- **Faster Decision Making**: Get instant insights to make informed infrastructure decisions
+- **Risk Mitigation**: Understand and address security and cost risks before deployment
+
+## Screenshots
+
+### Initial UI
+![Initial User Interface](screenshots/Initial%20UI.png)
+*Main application interface where users can upload Terraform files, paste code, or provide URLs, and configure analysis options*
+
+### Cost Analysis Results
+![Cost Analysis Interface](screenshots/CostAnalysis.png)
+*Cost analysis results displayed after clicking "Analyze Costs", showing interactive charts, resource breakdown, and cost estimates by cloud provider*
+
+### Security Risks Analysis
+![Security Risks](screenshots/SecurityRisks.png)
+*Security risks identified in infrastructure with severity levels, categories, and remediation recommendations*
+
+### Optimization Suggestions
+![Optimization Recommendations](screenshots/Optimization.png)
+*AI-powered cost optimization recommendations with priority levels, estimated savings, and actionable steps*
+
+### Architecture Diagrams
+![Architecture Improvements](screenshots/Architecture%20Improvements.png)
+*Before/after Mermaid.js architecture diagrams visualizing current infrastructure and optimized architecture*
+
+## Technical Features
 
 - **Multi-Cloud Support**: Analyze Terraform scripts for AWS, Azure, and GCP resources
 - **Cost Calculation**: Automatic cost estimation based on resource types and configurations
@@ -10,6 +64,8 @@ A web application that analyzes Terraform infrastructure scripts and provides AI
 - **Multiple Input Methods**: Upload files, paste code, or provide URLs
 - **Visual Cost Breakdown**: Interactive charts showing costs by service and region
 - **Resource Analysis**: Detailed breakdown of all resources with estimated costs
+- **Security Risk Analysis**: Automated identification of security vulnerabilities and compliance issues
+- **Mermaid.js Diagrams**: Visual representation of infrastructure architecture before and after optimization
 
 ## Architecture
 
@@ -47,10 +103,36 @@ export OPENAI_API_KEY="your-api-key-here"
 }
 ```
 
-**Option C: User Secrets (Development)**
+**Option C: User Secrets (Development - Recommended for Local Development)**
+
+For local development, use .NET User Secrets to store your API key securely:
+
 ```bash
+cd src/AICloudCostOptimizationAdvisor.Web
 dotnet user-secrets set "OpenAI:ApiKey" "your-api-key-here"
 ```
+
+You can also set other OpenAI configuration values:
+```bash
+dotnet user-secrets set "OpenAI:BaseUrl" "https://api.openai.com/v1"
+dotnet user-secrets set "OpenAI:DefaultChatModelId" "gpt-4o-mini"
+dotnet user-secrets set "OpenAI:DefaultEmbeddingModelId" "text-embedding-ada-002"
+```
+
+To view your secrets:
+```bash
+dotnet user-secrets list
+```
+
+To remove a secret:
+```bash
+dotnet user-secrets remove "OpenAI:ApiKey"
+```
+
+**Configuration Priority:**
+1. User Secrets (Development environment only)
+2. Environment Variables
+3. appsettings.json
 
 ### 2. Build and Run
 
@@ -71,9 +153,12 @@ The application will be available at `https://localhost:5001` or `http://localho
    - **Paste Text**: Paste Terraform code directly
    - **From URL**: Provide a URL to a Terraform file
 3. Select cloud providers to analyze (AWS, Azure, GCP)
-4. Optionally enable AI-powered optimization suggestions
+4. Optionally enable:
+   - AI-powered optimization suggestions
+   - Security risk analysis
+   - Mermaid.js architecture diagrams (before/after)
 5. Click "Analyze Costs"
-6. View detailed cost breakdown and optimization suggestions
+6. View detailed cost breakdown, optimization suggestions, security risks, and architecture diagrams
 
 ## Example Terraform Script
 
