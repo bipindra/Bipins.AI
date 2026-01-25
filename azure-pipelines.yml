@@ -1,0 +1,137 @@
+# azure-pipelines.yml
+# Azure DevOps Pipeline for building and packaging Bipins.AI NuGet package
+# Supports publishing to NuGet feeds using URL and credentials from variable groups
+
+trigger:
+  branches:
+    include:
+      - master
+      - main
+      - develop
+      - release/*
+  paths:
+    exclude:
+      - '*.md'
+      - 'docs/**'
+      - 'samples/**'
+
+pr:
+  branches:
+    include:
+      - master
+      - main
+      - develop
+
+pool:
+  vmImage: 'ubuntu-latest'  # or 'windows-latest' or 'macos-latest'
+
+variables:
+  buildConfiguration: 'Release'
+  dotnetVersion: '8.0.x'
+  artifactsDirectory: '$(Pipeline.Workspace)/artifacts'
+  packagesDirectory: '$(Pipeline.Workspace)/packages'
+
+# Variable group for NuGet publishing configuration
+# Create a variable group named "NuGetPublish" in Azure DevOps Library with:
+# - NuGetFeedUrl (e.g., https://api.nuget.org/v3/index.json or https://pkgs.dev.azure.com/org/project/_packaging/feed/nuget/v3/index.json)
+# - NuGetApiKey (secret) - mark as secret
+# - PublishToNuGet (boolean, set to true to enable publishing)
+- group: NuGetPublish
+
+stages:
+- stage: Build
+  displayName: 'Build and Package'
+  jobs:
+  - job: BuildNuGetPackage
+    displayName: 'Build NuGet Package'
+    steps:
+    - task: UseDotNet@2
+      displayName: 'Use .NET SDK'
+      inputs:
+        packageType: 'sdk'
+        version: '$(dotnetVersion)'
+        installationPath: '$(Agent.ToolsDirectory)/dotnet'
+
+    - task: DotNetCoreCLI@2
+      displayName: 'Restore NuGet packages'
+      inputs:
+        command: 'restore'
+        projects: '**/*.sln'
+
+    - task: DotNetCoreCLI@2
+      displayName: 'Build solution'
+      inputs:
+        command: 'build'
+        projects: '**/*.sln'
+        arguments: '--configuration $(buildConfiguration) --no-restore'
+
+    - task: DotNetCoreCLI@2
+      displayName: 'Install Cake.Tool'
+      inputs:
+        command: 'custom'
+        custom: 'tool'
+        arguments: 'install --global Cake.Tool'
+
+    - task: DotNetCoreCLI@2
+      displayName: 'Run Cake Pack task'
+      inputs:
+        command: 'custom'
+        custom: 'cake'
+        arguments: 'build.cake --target=Pack --configuration=$(buildConfiguration)'
+
+    - task: CopyFiles@2
+      displayName: 'Copy NuGet packages'
+      inputs:
+        SourceFolder: '$(System.DefaultWorkingDirectory)/artifacts'
+        Contents: '*.nupkg'
+        TargetFolder: '$(packagesDirectory)'
+
+    - task: CopyFiles@2
+      displayName: 'Copy symbol packages'
+      inputs:
+        SourceFolder: '$(System.DefaultWorkingDirectory)/artifacts'
+        Contents: '*.snupkg'
+        TargetFolder: '$(packagesDirectory)'
+        condition: succeededOrFailed()
+
+    - task: PublishBuildArtifacts@1
+      displayName: 'Publish NuGet packages as artifacts'
+      inputs:
+        PathtoPublish: '$(packagesDirectory)'
+        ArtifactName: 'NuGetPackages'
+        publishLocation: 'Container'
+
+- stage: Publish
+  displayName: 'Publish to NuGet Feed'
+  condition: and(succeeded(), eq(variables['PublishToNuGet'], 'true'))
+  dependsOn: Build
+  jobs:
+  - job: PublishToNuGet
+    displayName: 'Publish to NuGet Feed'
+    steps:
+    - task: DownloadBuildArtifacts@0
+      displayName: 'Download NuGet packages'
+      inputs:
+        buildType: 'current'
+        downloadType: 'specific'
+        itemPattern: '**/*.nupkg'
+        downloadPath: '$(System.ArtifactsDirectory)'
+
+    # Publish to NuGet feed using dotnet nuget push with URL and API key from variable group
+    - task: Bash@3
+      displayName: 'Publish to NuGet feed'
+      condition: and(succeeded(), ne(variables['NuGetFeedUrl'], ''), ne(variables['NuGetApiKey'], ''))
+      inputs:
+        targetType: 'inline'
+        script: |
+          find "$(System.ArtifactsDirectory)" -name "*.nupkg" -type f | while read package; do
+            echo "Publishing $(basename "$package") to $(NuGetFeedUrl)..."
+            dotnet nuget push "$package" --source $(NuGetFeedUrl) --api-key $(NuGetApiKey) --skip-duplicate
+            if [ $? -ne 0 ]; then
+              echo "##vso[task.logissue type=error]Failed to publish $(basename "$package")"
+              exit 1
+            fi
+          done
+      env:
+        NUGET_FEED_URL: $(NuGetFeedUrl)
+        NUGET_API_KEY: $(NuGetApiKey)
