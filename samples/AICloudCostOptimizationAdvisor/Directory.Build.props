@@ -1,0 +1,17 @@
+<Project>
+  <PropertyGroup>
+    <!-- 
+      BipinsAISource: Controls whether to use local project references or NuGet packages
+      - Local: Use project references to local .csproj files (default, for development)
+      - Remote: Use NuGet package references (for production/CI)
+      Set via: dotnet build /p:BipinsAISource=Remote
+      Or in Directory.Build.props: <BipinsAISource>Remote</BipinsAISource>
+      
+      BipinsAIVersion: Version of Bipins.AI NuGet package to use when BipinsAISource=Remote
+      Default: * (latest available)
+      Set via: dotnet build /p:BipinsAISource=Remote /p:BipinsAIVersion=1.0.0
+    -->
+    <BipinsAISource Condition="'$(BipinsAISource)' == ''">Local</BipinsAISource>
+    <BipinsAIVersion Condition="'$(BipinsAIVersion)' == ''">*</BipinsAIVersion>
+  </PropertyGroup>
+</Project>

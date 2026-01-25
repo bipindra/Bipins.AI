@@ -4,16 +4,19 @@
     <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <ProjectGuid>{05EDF167-E7BE-4A17-B050-710142641403}</ProjectGuid>
   </PropertyGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\..\..\..\src\Bipins.AI.Core\Bipins.AI.Core.csproj" />
-    <ProjectReference Include="..\..\..\..\src\Bipins.AI.Providers\Bipins.AI.Providers.OpenAI\Bipins.AI.Providers.OpenAI.csproj" />
+  <ItemGroup Condition="'$(BipinsAISource)' == 'Local'">
+    <ProjectReference Include="..\..\..\..\src\Bipins.AI\Bipins.AI.csproj" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(BipinsAISource)' == 'Remote'">
+    <PackageReference Include="Bipins.AI" Version="$(BipinsAIVersion)" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.Http" Version="8.0.0" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.0" />
   </ItemGroup>
-
 </Project>

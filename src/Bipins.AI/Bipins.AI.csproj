@@ -59,55 +59,78 @@
   </Target>
 
   <ItemGroup>
-    <!-- Core Libraries - Prevent from becoming package dependencies, include as assemblies -->
+    <!-- Core Libraries - Allow compile-time access but prevent from becoming package dependencies -->
     <ProjectReference Include="..\Bipins.AI.Core\Bipins.AI.Core.csproj">
-      <PrivateAssets>All</PrivateAssets>
-      <IncludeAssets>runtime;build;native;contentfiles;analyzers</IncludeAssets>
+      <PrivateAssets>none</PrivateAssets>
+      <IncludeAssets>compile;runtime;build;native;contentfiles;analyzers</IncludeAssets>
     </ProjectReference>
     <ProjectReference Include="..\Bipins.AI.Runtime\Bipins.AI.Runtime.csproj">
-      <PrivateAssets>All</PrivateAssets>
-      <IncludeAssets>runtime;build;native;contentfiles;analyzers</IncludeAssets>
+      <PrivateAssets>none</PrivateAssets>
+      <IncludeAssets>compile;runtime;build;native;contentfiles;analyzers</IncludeAssets>
     </ProjectReference>
     <ProjectReference Include="..\Bipins.AI.Ingestion\Bipins.AI.Ingestion.csproj">
-      <PrivateAssets>All</PrivateAssets>
-      <IncludeAssets>runtime;build;native;contentfiles;analyzers</IncludeAssets>
+      <PrivateAssets>none</PrivateAssets>
+      <IncludeAssets>compile;runtime;build;native;contentfiles;analyzers</IncludeAssets>
     </ProjectReference>
     
-    <!-- LLM Providers - Prevent from becoming package dependencies, include as assemblies -->
+    <!-- LLM Providers - Allow compile-time access but prevent from becoming package dependencies -->
     <ProjectReference Include="..\Bipins.AI.Providers\Bipins.AI.Providers.OpenAI\Bipins.AI.Providers.OpenAI.csproj">
-      <PrivateAssets>All</PrivateAssets>
-      <IncludeAssets>runtime;build;native;contentfiles;analyzers</IncludeAssets>
+      <PrivateAssets>none</PrivateAssets>
+      <IncludeAssets>compile;runtime;build;native;contentfiles;analyzers</IncludeAssets>
     </ProjectReference>
     <ProjectReference Include="..\Bipins.AI.Providers\Bipins.AI.Providers.Anthropic\Bipins.AI.Providers.Anthropic.csproj">
-      <PrivateAssets>All</PrivateAssets>
-      <IncludeAssets>runtime;build;native;contentfiles;analyzers</IncludeAssets>
+      <PrivateAssets>none</PrivateAssets>
+      <IncludeAssets>compile;runtime;build;native;contentfiles;analyzers</IncludeAssets>
     </ProjectReference>
     <ProjectReference Include="..\Bipins.AI.Providers\Bipins.AI.Providers.AzureOpenAI\Bipins.AI.Providers.AzureOpenAI.csproj">
-      <PrivateAssets>All</PrivateAssets>
-      <IncludeAssets>runtime;build;native;contentfiles;analyzers</IncludeAssets>
+      <PrivateAssets>none</PrivateAssets>
+      <IncludeAssets>compile;runtime;build;native;contentfiles;analyzers</IncludeAssets>
     </ProjectReference>
     <ProjectReference Include="..\Bipins.AI.Providers\Bipins.AI.Providers.Bedrock\Bipins.AI.Providers.Bedrock.csproj">
-      <PrivateAssets>All</PrivateAssets>
-      <IncludeAssets>runtime;build;native;contentfiles;analyzers</IncludeAssets>
+      <PrivateAssets>none</PrivateAssets>
+      <IncludeAssets>compile;runtime;build;native;contentfiles;analyzers</IncludeAssets>
     </ProjectReference>
     
-    <!-- Vector Database Integrations - Prevent from becoming package dependencies, include as assemblies -->
+    <!-- Vector Database Integrations - Allow compile-time access but prevent from becoming package dependencies -->
     <ProjectReference Include="..\Bipins.AI.Vectors\Bipins.AI.Vectors.Qdrant\Bipins.AI.Vectors.Qdrant.csproj">
-      <PrivateAssets>All</PrivateAssets>
-      <IncludeAssets>runtime;build;native;contentfiles;analyzers</IncludeAssets>
+      <PrivateAssets>none</PrivateAssets>
+      <IncludeAssets>compile;runtime;build;native;contentfiles;analyzers</IncludeAssets>
     </ProjectReference>
     <ProjectReference Include="..\Bipins.AI.Vectors\Bipins.AI.Vectors.Pinecone\Bipins.AI.Vectors.Pinecone.csproj">
-      <PrivateAssets>All</PrivateAssets>
-      <IncludeAssets>runtime;build;native;contentfiles;analyzers</IncludeAssets>
+      <PrivateAssets>none</PrivateAssets>
+      <IncludeAssets>compile;runtime;build;native;contentfiles;analyzers</IncludeAssets>
     </ProjectReference>
     <ProjectReference Include="..\Bipins.AI.Vectors\Bipins.AI.Vectors.Weaviate\Bipins.AI.Vectors.Weaviate.csproj">
-      <PrivateAssets>All</PrivateAssets>
-      <IncludeAssets>runtime;build;native;contentfiles;analyzers</IncludeAssets>
+      <PrivateAssets>none</PrivateAssets>
+      <IncludeAssets>compile;runtime;build;native;contentfiles;analyzers</IncludeAssets>
     </ProjectReference>
     <ProjectReference Include="..\Bipins.AI.Vectors\Bipins.AI.Vectors.Milvus\Bipins.AI.Vectors.Milvus.csproj">
-      <PrivateAssets>All</PrivateAssets>
-      <IncludeAssets>runtime;build;native;contentfiles;analyzers</IncludeAssets>
+      <PrivateAssets>none</PrivateAssets>
+      <IncludeAssets>compile;runtime;build;native;contentfiles;analyzers</IncludeAssets>
     </ProjectReference>
+  </ItemGroup>
+
+  <!-- Package dependencies from all referenced projects -->
+  <!-- These are included in the NuGet package so consumers get the required dependencies -->
+  <ItemGroup>
+    <!-- Core dependencies -->
+    <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="8.0.0" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="8.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Options" Version="8.0.0" />
+    
+    <!-- Runtime dependencies -->
+    <PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="8.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.0" />
+    <PackageReference Include="System.Diagnostics.DiagnosticSource" Version="8.0.1" />
+    <PackageReference Include="StackExchange.Redis" Version="2.10.1" />
+    
+    <!-- HTTP and provider dependencies -->
+    <PackageReference Include="Microsoft.Extensions.Http" Version="8.0.0" />
+    
+    <!-- Bedrock-specific dependencies -->
+    <PackageReference Include="AWSSDK.BedrockRuntime" Version="3.7.401" />
+    <PackageReference Include="System.Linq.Async" Version="6.0.1" />
+    <PackageReference Include="System.Text.Json" Version="8.0.5" />
   </ItemGroup>
 
 </Project>

@@ -9,8 +9,5 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Shared\AICloudCostOptimizationAdvisor.Shared.csproj" />
-    <ProjectReference Include="..\..\..\..\src\Bipins.AI.Core\Bipins.AI.Core.csproj" />
   </ItemGroup>
-
-
 </Project>

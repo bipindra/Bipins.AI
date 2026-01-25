@@ -1,5 +1,5 @@
 # PowerShell script to publish Bipins.AI NuGet package
-# Usage: .\scripts\publish-nuget.ps1 [-ApiKey <your-api-key>] [-SourceUrl <package-server-url>] [-SkipBuild]
+# Usage: .\meta\publish-nuget.ps1 [-ApiKey <your-api-key>] [-SourceUrl <package-server-url>] [-SkipBuild]
 
 param(
     [string]$ApiKey = $env:PACKAGE_API_KEY,

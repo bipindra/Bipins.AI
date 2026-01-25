@@ -11,12 +11,11 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\Bipins.AI.Core\Bipins.AI.Core.csproj" />
-    <PackageReference Include="AWSSDK.BedrockRuntime" Version="3.7.400.0" />
+    <PackageReference Include="AWSSDK.BedrockRuntime" Version="3.7.401" />
     <PackageReference Include="Microsoft.Extensions.Http" Version="8.0.0" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.0" />
     <PackageReference Include="Microsoft.Extensions.Options" Version="8.0.0" />
     <PackageReference Include="System.Linq.Async" Version="6.0.1" />
-    <PackageReference Include="System.Text.Json" Version="9.0.0" />
   </ItemGroup>
 
 </Project>

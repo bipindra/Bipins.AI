@@ -13,6 +13,13 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "deploy", "deploy", "{8BC9CE
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "samples", "samples", "{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC946}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "meta", "meta", "{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC947}"
+	ProjectSection(SolutionItems) = preProject
+		meta\publish-nuget.ps1 = meta\publish-nuget.ps1
+		Directory.Build.props = Directory.Build.props
+		Directory.Build.targets = Directory.Build.targets
+	EndProjectSection
+EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Bipins.AI.Core", "src\Bipins.AI.Core\Bipins.AI.Core.csproj", "{A1B2C3D4-E5F6-4A5B-8C9D-0E1F2A3B4C5D}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Bipins.AI.Runtime", "src\Bipins.AI.Runtime\Bipins.AI.Runtime.csproj", "{B2C3D4E5-F6A7-4B5C-9D0E-1F2A3B4C5D6E}"

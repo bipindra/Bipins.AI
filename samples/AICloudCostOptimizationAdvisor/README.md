@@ -232,6 +232,28 @@ samples/AICloudCostOptimizationAdvisor/
 
 ## Configuration
 
+### Bipins.AI Source Configuration
+
+The project supports two modes for referencing Bipins.AI:
+
+**Local Mode (Default)**: Uses project references to local `.csproj` files
+- Best for development when working with the Bipins.AI source code
+- Default behavior - no configuration needed
+- Build command: `dotnet build` or `dotnet build -p:BipinsAISource=Local`
+
+**Remote Mode**: Uses NuGet package references
+- Best for production, CI/CD, or when Bipins.AI is published as a NuGet package
+- Build command: `dotnet build -p:BipinsAISource=Remote`
+- With specific version: `dotnet build -p:BipinsAISource=Remote -p:BipinsAIVersion=1.0.0`
+
+You can also set this in `Directory.Build.props`:
+```xml
+<PropertyGroup>
+  <BipinsAISource>Remote</BipinsAISource>
+  <BipinsAIVersion>1.0.0</BipinsAIVersion>
+</PropertyGroup>
+```
+
 ### OpenAI Settings
 
 ```json
