@@ -5,109 +5,14 @@
     <PackageId>Bipins.AI</PackageId>
     <Description>Bipins.AI - Enterprise AI platform for building intelligent applications with RAG (Retrieval-Augmented Generation), multiple LLM providers, and vector databases. Includes Core, Runtime, Ingestion, Providers (OpenAI, Anthropic, Azure OpenAI, Bedrock), and Vector integrations (Qdrant, Pinecone, Weaviate, Milvus).</Description>
     <TargetFramework>net8.0</TargetFramework>
-    <IncludeBuildOutput>true</IncludeBuildOutput>
-    <TargetsForTfmSpecificBuildOutput>$(TargetsForTfmSpecificBuildOutput);IncludeReferencedAssemblies</TargetsForTfmSpecificBuildOutput>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageProjectUrl>https://github.com/bipindra/Bipins.AI</PackageProjectUrl>
   </PropertyGroup>
 
-  <Target Name="IncludeReferencedAssemblies" BeforeTargets="_GetPackageFiles">
-    <ItemGroup>
-      <!-- Directly include assemblies from referenced project outputs -->
-      <_ReferencedDlls Include="..\Bipins.AI.Core\bin\$(Configuration)\$(TargetFramework)\Bipins.AI.Core.dll" />
-      <_ReferencedDlls Include="..\Bipins.AI.Runtime\bin\$(Configuration)\$(TargetFramework)\Bipins.AI.Runtime.dll" />
-      <_ReferencedDlls Include="..\Bipins.AI.Ingestion\bin\$(Configuration)\$(TargetFramework)\Bipins.AI.Ingestion.dll" />
-      <_ReferencedDlls Include="..\Bipins.AI.Providers\Bipins.AI.Providers.OpenAI\bin\$(Configuration)\$(TargetFramework)\Bipins.AI.Providers.OpenAI.dll" />
-      <_ReferencedDlls Include="..\Bipins.AI.Providers\Bipins.AI.Providers.Anthropic\bin\$(Configuration)\$(TargetFramework)\Bipins.AI.Providers.Anthropic.dll" />
-      <_ReferencedDlls Include="..\Bipins.AI.Providers\Bipins.AI.Providers.AzureOpenAI\bin\$(Configuration)\$(TargetFramework)\Bipins.AI.Providers.AzureOpenAI.dll" />
-      <_ReferencedDlls Include="..\Bipins.AI.Providers\Bipins.AI.Providers.Bedrock\bin\$(Configuration)\$(TargetFramework)\Bipins.AI.Providers.Bedrock.dll" />
-      <_ReferencedDlls Include="..\Bipins.AI.Vectors\Bipins.AI.Vectors.Qdrant\bin\$(Configuration)\$(TargetFramework)\Bipins.AI.Vectors.Qdrant.dll" />
-      <_ReferencedDlls Include="..\Bipins.AI.Vectors\Bipins.AI.Vectors.Pinecone\bin\$(Configuration)\$(TargetFramework)\Bipins.AI.Vectors.Pinecone.dll" />
-      <_ReferencedDlls Include="..\Bipins.AI.Vectors\Bipins.AI.Vectors.Weaviate\bin\$(Configuration)\$(TargetFramework)\Bipins.AI.Vectors.Weaviate.dll" />
-      <_ReferencedDlls Include="..\Bipins.AI.Vectors\Bipins.AI.Vectors.Milvus\bin\$(Configuration)\$(TargetFramework)\Bipins.AI.Vectors.Milvus.dll" />
-      
-      <!-- Include PDB files if they exist -->
-      <_ReferencedPdbs Include="..\Bipins.AI.Core\bin\$(Configuration)\$(TargetFramework)\Bipins.AI.Core.pdb" Condition="Exists('..\Bipins.AI.Core\bin\$(Configuration)\$(TargetFramework)\Bipins.AI.Core.pdb')" />
-      <_ReferencedPdbs Include="..\Bipins.AI.Runtime\bin\$(Configuration)\$(TargetFramework)\Bipins.AI.Runtime.pdb" Condition="Exists('..\Bipins.AI.Runtime\bin\$(Configuration)\$(TargetFramework)\Bipins.AI.Runtime.pdb')" />
-      <_ReferencedPdbs Include="..\Bipins.AI.Ingestion\bin\$(Configuration)\$(TargetFramework)\Bipins.AI.Ingestion.pdb" Condition="Exists('..\Bipins.AI.Ingestion\bin\$(Configuration)\$(TargetFramework)\Bipins.AI.Ingestion.pdb')" />
-      <_ReferencedPdbs Include="..\Bipins.AI.Providers\Bipins.AI.Providers.OpenAI\bin\$(Configuration)\$(TargetFramework)\Bipins.AI.Providers.OpenAI.pdb" Condition="Exists('..\Bipins.AI.Providers\Bipins.AI.Providers.OpenAI\bin\$(Configuration)\$(TargetFramework)\Bipins.AI.Providers.OpenAI.pdb')" />
-      <_ReferencedPdbs Include="..\Bipins.AI.Providers\Bipins.AI.Providers.Anthropic\bin\$(Configuration)\$(TargetFramework)\Bipins.AI.Providers.Anthropic.pdb" Condition="Exists('..\Bipins.AI.Providers\Bipins.AI.Providers.Anthropic\bin\$(Configuration)\$(TargetFramework)\Bipins.AI.Providers.Anthropic.pdb')" />
-      <_ReferencedPdbs Include="..\Bipins.AI.Providers\Bipins.AI.Providers.AzureOpenAI\bin\$(Configuration)\$(TargetFramework)\Bipins.AI.Providers.AzureOpenAI.pdb" Condition="Exists('..\Bipins.AI.Providers\Bipins.AI.Providers.AzureOpenAI\bin\$(Configuration)\$(TargetFramework)\Bipins.AI.Providers.AzureOpenAI.pdb')" />
-      <_ReferencedPdbs Include="..\Bipins.AI.Providers\Bipins.AI.Providers.Bedrock\bin\$(Configuration)\$(TargetFramework)\Bipins.AI.Providers.Bedrock.pdb" Condition="Exists('..\Bipins.AI.Providers\Bipins.AI.Providers.Bedrock\bin\$(Configuration)\$(TargetFramework)\Bipins.AI.Providers.Bedrock.pdb')" />
-      <_ReferencedPdbs Include="..\Bipins.AI.Vectors\Bipins.AI.Vectors.Qdrant\bin\$(Configuration)\$(TargetFramework)\Bipins.AI.Vectors.Qdrant.pdb" Condition="Exists('..\Bipins.AI.Vectors\Bipins.AI.Vectors.Qdrant\bin\$(Configuration)\$(TargetFramework)\Bipins.AI.Vectors.Qdrant.pdb')" />
-      <_ReferencedPdbs Include="..\Bipins.AI.Vectors\Bipins.AI.Vectors.Pinecone\bin\$(Configuration)\$(TargetFramework)\Bipins.AI.Vectors.Pinecone.pdb" Condition="Exists('..\Bipins.AI.Vectors\Bipins.AI.Vectors.Pinecone\bin\$(Configuration)\$(TargetFramework)\Bipins.AI.Vectors.Pinecone.pdb')" />
-      <_ReferencedPdbs Include="..\Bipins.AI.Vectors\Bipins.AI.Vectors.Weaviate\bin\$(Configuration)\$(TargetFramework)\Bipins.AI.Vectors.Weaviate.pdb" Condition="Exists('..\Bipins.AI.Vectors\Bipins.AI.Vectors.Weaviate\bin\$(Configuration)\$(TargetFramework)\Bipins.AI.Vectors.Weaviate.pdb')" />
-      <_ReferencedPdbs Include="..\Bipins.AI.Vectors\Bipins.AI.Vectors.Milvus\bin\$(Configuration)\$(TargetFramework)\Bipins.AI.Vectors.Milvus.pdb" Condition="Exists('..\Bipins.AI.Vectors\Bipins.AI.Vectors.Milvus\bin\$(Configuration)\$(TargetFramework)\Bipins.AI.Vectors.Milvus.pdb')" />
-      
-      <!-- Include XML documentation files -->
-      <_ReferencedXmls Include="..\Bipins.AI.Core\bin\$(Configuration)\$(TargetFramework)\Bipins.AI.Core.xml" Condition="Exists('..\Bipins.AI.Core\bin\$(Configuration)\$(TargetFramework)\Bipins.AI.Core.xml')" />
-      <_ReferencedXmls Include="..\Bipins.AI.Runtime\bin\$(Configuration)\$(TargetFramework)\Bipins.AI.Runtime.xml" Condition="Exists('..\Bipins.AI.Runtime\bin\$(Configuration)\$(TargetFramework)\Bipins.AI.Runtime.xml')" />
-      <_ReferencedXmls Include="..\Bipins.AI.Ingestion\bin\$(Configuration)\$(TargetFramework)\Bipins.AI.Ingestion.xml" Condition="Exists('..\Bipins.AI.Ingestion\bin\$(Configuration)\$(TargetFramework)\Bipins.AI.Ingestion.xml')" />
-      <_ReferencedXmls Include="..\Bipins.AI.Providers\Bipins.AI.Providers.OpenAI\bin\$(Configuration)\$(TargetFramework)\Bipins.AI.Providers.OpenAI.xml" Condition="Exists('..\Bipins.AI.Providers\Bipins.AI.Providers.OpenAI\bin\$(Configuration)\$(TargetFramework)\Bipins.AI.Providers.OpenAI.xml')" />
-      <_ReferencedXmls Include="..\Bipins.AI.Providers\Bipins.AI.Providers.Anthropic\bin\$(Configuration)\$(TargetFramework)\Bipins.AI.Providers.Anthropic.xml" Condition="Exists('..\Bipins.AI.Providers\Bipins.AI.Providers.Anthropic\bin\$(Configuration)\$(TargetFramework)\Bipins.AI.Providers.Anthropic.xml')" />
-      <_ReferencedXmls Include="..\Bipins.AI.Providers\Bipins.AI.Providers.AzureOpenAI\bin\$(Configuration)\$(TargetFramework)\Bipins.AI.Providers.AzureOpenAI.xml" Condition="Exists('..\Bipins.AI.Providers\Bipins.AI.Providers.AzureOpenAI\bin\$(Configuration)\$(TargetFramework)\Bipins.AI.Providers.AzureOpenAI.xml')" />
-      <_ReferencedXmls Include="..\Bipins.AI.Providers\Bipins.AI.Providers.Bedrock\bin\$(Configuration)\$(TargetFramework)\Bipins.AI.Providers.Bedrock.xml" Condition="Exists('..\Bipins.AI.Providers\Bipins.AI.Providers.Bedrock\bin\$(Configuration)\$(TargetFramework)\Bipins.AI.Providers.Bedrock.xml')" />
-      <_ReferencedXmls Include="..\Bipins.AI.Vectors\Bipins.AI.Vectors.Qdrant\bin\$(Configuration)\$(TargetFramework)\Bipins.AI.Vectors.Qdrant.xml" Condition="Exists('..\Bipins.AI.Vectors\Bipins.AI.Vectors.Qdrant\bin\$(Configuration)\$(TargetFramework)\Bipins.AI.Vectors.Qdrant.xml')" />
-      <_ReferencedXmls Include="..\Bipins.AI.Vectors\Bipins.AI.Vectors.Pinecone\bin\$(Configuration)\$(TargetFramework)\Bipins.AI.Vectors.Pinecone.xml" Condition="Exists('..\Bipins.AI.Vectors\Bipins.AI.Vectors.Pinecone\bin\$(Configuration)\$(TargetFramework)\Bipins.AI.Vectors.Pinecone.xml')" />
-      <_ReferencedXmls Include="..\Bipins.AI.Vectors\Bipins.AI.Vectors.Weaviate\bin\$(Configuration)\$(TargetFramework)\Bipins.AI.Vectors.Weaviate.xml" Condition="Exists('..\Bipins.AI.Vectors\Bipins.AI.Vectors.Weaviate\bin\$(Configuration)\$(TargetFramework)\Bipins.AI.Vectors.Weaviate.xml')" />
-      <_ReferencedXmls Include="..\Bipins.AI.Vectors\Bipins.AI.Vectors.Milvus\bin\$(Configuration)\$(TargetFramework)\Bipins.AI.Vectors.Milvus.xml" Condition="Exists('..\Bipins.AI.Vectors\Bipins.AI.Vectors.Milvus\bin\$(Configuration)\$(TargetFramework)\Bipins.AI.Vectors.Milvus.xml')" />
-    </ItemGroup>
-    
-    <ItemGroup>
-      <TfmSpecificPackageFile Include="@(_ReferencedDlls)" PackagePath="lib/$(TargetFramework)/" Condition="Exists('%(FullPath)')" />
-      <TfmSpecificPackageFile Include="@(_ReferencedPdbs)" PackagePath="lib/$(TargetFramework)/" />
-      <TfmSpecificPackageFile Include="@(_ReferencedXmls)" PackagePath="lib/$(TargetFramework)/" />
-    </ItemGroup>
-  </Target>
-
   <ItemGroup>
-    <!-- Core Libraries - Allow compile-time access but prevent from becoming package dependencies -->
-    <ProjectReference Include="..\Bipins.AI.Core\Bipins.AI.Core.csproj">
-      <PrivateAssets>none</PrivateAssets>
-      <IncludeAssets>compile;runtime;build;native;contentfiles;analyzers</IncludeAssets>
-    </ProjectReference>
-    <ProjectReference Include="..\Bipins.AI.Runtime\Bipins.AI.Runtime.csproj">
-      <PrivateAssets>none</PrivateAssets>
-      <IncludeAssets>compile;runtime;build;native;contentfiles;analyzers</IncludeAssets>
-    </ProjectReference>
-    <ProjectReference Include="..\Bipins.AI.Ingestion\Bipins.AI.Ingestion.csproj">
-      <PrivateAssets>none</PrivateAssets>
-      <IncludeAssets>compile;runtime;build;native;contentfiles;analyzers</IncludeAssets>
-    </ProjectReference>
-    
-    <!-- LLM Providers - Allow compile-time access but prevent from becoming package dependencies -->
-    <ProjectReference Include="..\Bipins.AI.Providers\Bipins.AI.Providers.OpenAI\Bipins.AI.Providers.OpenAI.csproj">
-      <PrivateAssets>none</PrivateAssets>
-      <IncludeAssets>compile;runtime;build;native;contentfiles;analyzers</IncludeAssets>
-    </ProjectReference>
-    <ProjectReference Include="..\Bipins.AI.Providers\Bipins.AI.Providers.Anthropic\Bipins.AI.Providers.Anthropic.csproj">
-      <PrivateAssets>none</PrivateAssets>
-      <IncludeAssets>compile;runtime;build;native;contentfiles;analyzers</IncludeAssets>
-    </ProjectReference>
-    <ProjectReference Include="..\Bipins.AI.Providers\Bipins.AI.Providers.AzureOpenAI\Bipins.AI.Providers.AzureOpenAI.csproj">
-      <PrivateAssets>none</PrivateAssets>
-      <IncludeAssets>compile;runtime;build;native;contentfiles;analyzers</IncludeAssets>
-    </ProjectReference>
-    <ProjectReference Include="..\Bipins.AI.Providers\Bipins.AI.Providers.Bedrock\Bipins.AI.Providers.Bedrock.csproj">
-      <PrivateAssets>none</PrivateAssets>
-      <IncludeAssets>compile;runtime;build;native;contentfiles;analyzers</IncludeAssets>
-    </ProjectReference>
-    
-    <!-- Vector Database Integrations - Allow compile-time access but prevent from becoming package dependencies -->
-    <ProjectReference Include="..\Bipins.AI.Vectors\Bipins.AI.Vectors.Qdrant\Bipins.AI.Vectors.Qdrant.csproj">
-      <PrivateAssets>none</PrivateAssets>
-      <IncludeAssets>compile;runtime;build;native;contentfiles;analyzers</IncludeAssets>
-    </ProjectReference>
-    <ProjectReference Include="..\Bipins.AI.Vectors\Bipins.AI.Vectors.Pinecone\Bipins.AI.Vectors.Pinecone.csproj">
-      <PrivateAssets>none</PrivateAssets>
-      <IncludeAssets>compile;runtime;build;native;contentfiles;analyzers</IncludeAssets>
-    </ProjectReference>
-    <ProjectReference Include="..\Bipins.AI.Vectors\Bipins.AI.Vectors.Weaviate\Bipins.AI.Vectors.Weaviate.csproj">
-      <PrivateAssets>none</PrivateAssets>
-      <IncludeAssets>compile;runtime;build;native;contentfiles;analyzers</IncludeAssets>
-    </ProjectReference>
-    <ProjectReference Include="..\Bipins.AI.Vectors\Bipins.AI.Vectors.Milvus\Bipins.AI.Vectors.Milvus.csproj">
-      <PrivateAssets>none</PrivateAssets>
-      <IncludeAssets>compile;runtime;build;native;contentfiles;analyzers</IncludeAssets>
-    </ProjectReference>
+    <None Include="README.md" Pack="true" PackagePath="" />
   </ItemGroup>
 
   <!-- Package dependencies from all referenced projects -->

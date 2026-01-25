@@ -6,11 +6,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Bipins.AI.Core\Bipins.AI.Core.csproj" />
-    <ProjectReference Include="..\Bipins.AI.Runtime\Bipins.AI.Runtime.csproj" />
-    <ProjectReference Include="..\Bipins.AI.Ingestion\Bipins.AI.Ingestion.csproj" />
-    <ProjectReference Include="..\Bipins.AI.Providers\Bipins.AI.Providers.OpenAI\Bipins.AI.Providers.OpenAI.csproj" />
-    <ProjectReference Include="..\Bipins.AI.Vectors\Bipins.AI.Vectors.Qdrant\Bipins.AI.Vectors.Qdrant.csproj" />
+    <ProjectReference Include="..\Bipins.AI\Bipins.AI.csproj" />
     <PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" Version="8.0.1" />
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.0" />
   </ItemGroup>

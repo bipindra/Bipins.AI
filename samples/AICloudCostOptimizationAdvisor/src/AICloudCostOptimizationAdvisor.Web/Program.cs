@@ -1,3 +1,4 @@
+using Bipins.AI;
 using Bipins.AI.Core;
 using Bipins.AI.Providers.OpenAI;
 using AICloudCostOptimizationAdvisor.Shared.Services;

@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Text.Json;
 using Bipins.AI.Api.Authentication;
+using Bipins.AI;
 using Bipins.AI.Core;
 using Bipins.AI.Core.Configuration;
 using Bipins.AI.Core.DependencyInjection;

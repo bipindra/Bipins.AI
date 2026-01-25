@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Bipins.AI;
 using Bipins.AI.Core;
 using Bipins.AI.Core.Configuration;
 using Bipins.AI.Core.DependencyInjection;

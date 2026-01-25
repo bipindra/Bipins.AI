@@ -11,8 +11,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\..\..\src\Bipins.AI.Core\Bipins.AI.Core.csproj" />
-    <ProjectReference Include="..\..\..\..\src\Bipins.AI.Providers\Bipins.AI.Providers.Bedrock\Bipins.AI.Providers.Bedrock.csproj" />
+    <ProjectReference Include="..\..\..\..\src\Bipins.AI\Bipins.AI.csproj" />
   </ItemGroup>
 
 </Project>

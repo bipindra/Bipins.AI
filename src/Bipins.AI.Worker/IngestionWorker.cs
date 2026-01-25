@@ -1,4 +1,5 @@
 using System.Threading.Channels;
+using Bipins.AI;
 using Bipins.AI.Ingestion;
 using Bipins.AI.Worker.Ingestion;
 using Microsoft.Extensions.Hosting;
