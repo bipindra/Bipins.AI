@@ -1,0 +1,170 @@
+@model AICloudCostOptimizationAdvisor.Shared.Models.TerraformAnalysis
+@{
+    ViewData["Title"] = "Analysis Results";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-4">
+            <i class="bi bi-graph-up"></i> Cost Analysis Results
+        </h1>
+        <div class="text-muted mb-4">
+            Analysis ID: <code>@Model.AnalysisId</code> | 
+            Created: @Model.CreatedAt.ToString("g")
+        </div>
+    </div>
+</div>
+
+@if (!string.IsNullOrEmpty(Model.ErrorMessage))
+{
+    <div class="alert alert-danger">
+        <i class="bi bi-exclamation-triangle"></i> @Model.ErrorMessage
+    </div>
+}
+
+@if (!string.IsNullOrEmpty(Model.Summary))
+{
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="bi bi-file-text"></i> Summary</h5>
+        </div>
+        <div class="card-body">
+            <p>@Model.Summary</p>
+        </div>
+    </div>
+}
+
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card text-center">
+            <div class="card-body">
+                <h3 class="text-primary">$@Model.TotalMonthlyCost.ToString("F2")</h3>
+                <p class="text-muted mb-0">Total Monthly Cost</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card text-center">
+            <div class="card-body">
+                <h3 class="text-success">$@Model.TotalAnnualCost.ToString("F2")</h3>
+                <p class="text-muted mb-0">Total Annual Cost</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card text-center">
+            <div class="card-body">
+                <h3 class="text-info">@Model.ParsedResources.Count</h3>
+                <p class="text-muted mb-0">Resources Analyzed</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+@foreach (var cloudCost in Model.CloudCosts)
+{
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">
+                <i class="bi bi-cloud"></i> @cloudCost.Provider
+                <span class="badge bg-primary float-end">$@cloudCost.TotalMonthlyCost.ToString("F2")/month</span>
+            </h5>
+        </div>
+        <div class="card-body">
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <canvas id="chart-@cloudCost.Provider-service" height="200"></canvas>
+                </div>
+                <div class="col-md-6">
+                    <canvas id="chart-@cloudCost.Provider-region" height="200"></canvas>
+                </div>
+            </div>
+            <h6>Resources</h6>
+            <div class="table-responsive">
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>Resource</th>
+                            <th>Type</th>
+                            <th>Region</th>
+                            <th class="text-end">Monthly Cost</th>
+                            <th class="text-end">Annual Cost</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var resource in cloudCost.Resources)
+                        {
+                            <tr>
+                                <td><code>@resource.ResourceId</code></td>
+                                <td>@resource.ResourceType</td>
+                                <td>@resource.Region</td>
+                                <td class="text-end">$@resource.MonthlyCost.ToString("F2")</td>
+                                <td class="text-end">$@resource.AnnualCost.ToString("F2")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+}
+
+@if (Model.Optimizations.Any())
+{
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="bi bi-lightbulb"></i> Optimization Suggestions</h5>
+        </div>
+        <div class="card-body">
+            @foreach (var optimization in Model.Optimizations.OrderByDescending(o => o.Priority == "High").ThenByDescending(o => o.Priority == "Medium"))
+            {
+                <div class="card mb-3 border-@(optimization.Priority == "High" ? "danger" : optimization.Priority == "Medium" ? "warning" : "info")">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <h6 class="card-title">
+                                    <span class="badge bg-@(optimization.Priority == "High" ? "danger" : optimization.Priority == "Medium" ? "warning" : "info")">
+                                        @optimization.Priority
+                                    </span>
+                                    <span class="badge bg-secondary">@optimization.Category</span>
+                                    @if (!string.IsNullOrEmpty(optimization.CloudProvider))
+                                    {
+                                        <span class="badge bg-primary">@optimization.CloudProvider</span>
+                                    }
+                                </h6>
+                                <p class="card-text">@optimization.Description</p>
+                                @if (optimization.Actions.Any())
+                                {
+                                    <ul class="mb-0">
+                                        @foreach (var action in optimization.Actions)
+                                        {
+                                            <li>@action</li>
+                                        }
+                                    </ul>
+                                }
+                            </div>
+                            <div class="text-end">
+                                <strong class="text-success">@optimization.EstimatedSavings</strong>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+}
+
+<div class="mt-4">
+    <a href="/" class="btn btn-secondary">
+        <i class="bi bi-arrow-left"></i> Back to Home
+    </a>
+</div>
+
+@section Scripts {
+    <script>
+        $(document).ready(function() {
+            analysisApp.renderCharts(@Html.Raw(Json.Serialize(Model)));
+        });
+    </script>
+}

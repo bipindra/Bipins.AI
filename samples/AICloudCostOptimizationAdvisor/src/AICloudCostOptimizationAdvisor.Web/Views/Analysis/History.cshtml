@@ -1,0 +1,68 @@
+@model List<AICloudCostOptimizationAdvisor.Shared.Models.TerraformAnalysis>
+@{
+    ViewData["Title"] = "Analysis History";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-4">
+            <i class="bi bi-clock-history"></i> Analysis History
+        </h1>
+    </div>
+</div>
+
+@if (Model == null || !Model.Any())
+{
+    <div class="alert alert-info">
+        <i class="bi bi-info-circle"></i> No analysis history available. 
+        <a href="/">Start a new analysis</a>
+    </div>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table table-hover">
+            <thead>
+                <tr>
+                    <th>Analysis ID</th>
+                    <th>Created</th>
+                    <th>Providers</th>
+                    <th class="text-end">Monthly Cost</th>
+                    <th class="text-end">Annual Cost</th>
+                    <th>Resources</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var analysis in Model.OrderByDescending(a => a.CreatedAt))
+                {
+                    <tr>
+                        <td><code>@analysis.AnalysisId.Substring(0, 8)...</code></td>
+                        <td>@analysis.CreatedAt.ToString("g")</td>
+                        <td>
+                            @foreach (var provider in analysis.CloudCosts.Select(c => c.Provider).Distinct())
+                            {
+                                <span class="badge bg-primary">@provider</span>
+                            }
+                        </td>
+                        <td class="text-end">$@analysis.TotalMonthlyCost.ToString("F2")</td>
+                        <td class="text-end">$@analysis.TotalAnnualCost.ToString("F2")</td>
+                        <td>@analysis.ParsedResources.Count</td>
+                        <td>
+                            <a href="/Analysis/@analysis.AnalysisId" class="btn btn-sm btn-primary">
+                                <i class="bi bi-eye"></i> View
+                            </a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+<div class="mt-4">
+    <a href="/" class="btn btn-secondary">
+        <i class="bi bi-arrow-left"></i> Back to Home
+    </a>
+</div>
