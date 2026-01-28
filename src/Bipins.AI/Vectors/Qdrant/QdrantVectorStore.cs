@@ -32,7 +32,8 @@ public class QdrantVectorStore : IVectorStore
 
         if (_options.CreateCollectionIfMissing)
         {
-            _ = EnsureCollectionExistsAsync(CancellationToken.None);
+            // Best-effort: ensure the default collection exists.
+            _ = EnsureCollectionExistsAsync(_options.DefaultCollectionName, CancellationToken.None);
         }
     }
 
@@ -40,7 +41,10 @@ public class QdrantVectorStore : IVectorStore
     public async Task UpsertAsync(VectorUpsertRequest request, CancellationToken cancellationToken = default)
     {
         var collectionName = request.CollectionName ?? _options.DefaultCollectionName;
-        await EnsureCollectionExistsAsync(cancellationToken);
+        if (_options.CreateCollectionIfMissing)
+        {
+            await EnsureCollectionExistsAsync(collectionName, cancellationToken);
+        }
 
         var client = CreateHttpClient();
         var url = $"{_options.Endpoint}/collections/{collectionName}/points";
@@ -76,6 +80,10 @@ public class QdrantVectorStore : IVectorStore
     public async Task<VectorQueryResponse> QueryAsync(VectorQueryRequest request, CancellationToken cancellationToken = default)
     {
         var collectionName = request.CollectionName ?? _options.DefaultCollectionName;
+        if (_options.CreateCollectionIfMissing)
+        {
+            await EnsureCollectionExistsAsync(collectionName, cancellationToken);
+        }
         var client = CreateHttpClient();
         var url = $"{_options.Endpoint}/collections/{collectionName}/points/search";
 
@@ -142,6 +150,10 @@ public class QdrantVectorStore : IVectorStore
     public async Task DeleteAsync(VectorDeleteRequest request, CancellationToken cancellationToken = default)
     {
         var collectionName = request.CollectionName ?? _options.DefaultCollectionName;
+        if (_options.CreateCollectionIfMissing)
+        {
+            await EnsureCollectionExistsAsync(collectionName, cancellationToken);
+        }
         var client = CreateHttpClient();
         var url = $"{_options.Endpoint}/collections/{collectionName}/points/delete";
 
@@ -181,9 +193,8 @@ public class QdrantVectorStore : IVectorStore
         return client;
     }
 
-    private async Task EnsureCollectionExistsAsync(CancellationToken cancellationToken)
+    private async Task EnsureCollectionExistsAsync(string collectionName, CancellationToken cancellationToken)
     {
-        var collectionName = _options.DefaultCollectionName;
         var client = CreateHttpClient();
 
         // Check if collection exists
