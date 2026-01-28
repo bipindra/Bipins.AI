@@ -133,12 +133,13 @@ public static class ServiceCollectionExtensions
     public static IBipinsAIBuilder AddOpenAI(this IBipinsAIBuilder builder, Action<OpenAiOptions> configure)
     {
         builder.Services.Configure(configure);
-        builder.Services.AddHttpClient<OpenAiChatModel>();
-        builder.Services.AddHttpClient<OpenAiEmbeddingModel>();
-        builder.Services.AddHttpClient<OpenAiChatModelStreaming>();
-        builder.Services.AddSingleton<IChatModel, OpenAiChatModel>();
-        builder.Services.AddSingleton<IEmbeddingModel, OpenAiEmbeddingModel>();
-        builder.Services.AddSingleton<IChatModelStreaming, OpenAiChatModelStreaming>();
+        builder.Services.AddHttpClient();
+        builder.Services.AddSingleton<OpenAiChatModel>();
+        builder.Services.AddSingleton<OpenAiEmbeddingModel>();
+        builder.Services.AddSingleton<OpenAiChatModelStreaming>();
+        builder.Services.AddSingleton<IChatModel>(sp => sp.GetRequiredService<OpenAiChatModel>());
+        builder.Services.AddSingleton<IEmbeddingModel>(sp => sp.GetRequiredService<OpenAiEmbeddingModel>());
+        builder.Services.AddSingleton<IChatModelStreaming>(sp => sp.GetRequiredService<OpenAiChatModelStreaming>());
         builder.Services.AddSingleton<ILLMProvider, OpenAiLLMProvider>();
 
         return builder;
@@ -150,10 +151,11 @@ public static class ServiceCollectionExtensions
     public static IBipinsAIBuilder AddAnthropic(this IBipinsAIBuilder builder, Action<AnthropicOptions> configure)
     {
         builder.Services.Configure(configure);
-        builder.Services.AddHttpClient<AnthropicChatModel>();
-        builder.Services.AddHttpClient<AnthropicChatModelStreaming>();
-        builder.Services.AddSingleton<IChatModel, AnthropicChatModel>();
-        builder.Services.AddSingleton<IChatModelStreaming, AnthropicChatModelStreaming>();
+        builder.Services.AddHttpClient();
+        builder.Services.AddSingleton<AnthropicChatModel>();
+        builder.Services.AddSingleton<AnthropicChatModelStreaming>();
+        builder.Services.AddSingleton<IChatModel>(sp => sp.GetRequiredService<AnthropicChatModel>());
+        builder.Services.AddSingleton<IChatModelStreaming>(sp => sp.GetRequiredService<AnthropicChatModelStreaming>());
         builder.Services.AddSingleton<ILLMProvider, AnthropicLLMProvider>();
 
         return builder;
@@ -165,12 +167,13 @@ public static class ServiceCollectionExtensions
     public static IBipinsAIBuilder AddAzureOpenAI(this IBipinsAIBuilder builder, Action<AzureOpenAiOptions> configure)
     {
         builder.Services.Configure(configure);
-        builder.Services.AddHttpClient<AzureOpenAiChatModel>();
-        builder.Services.AddHttpClient<AzureOpenAiChatModelStreaming>();
-        builder.Services.AddHttpClient<AzureOpenAiEmbeddingModel>();
-        builder.Services.AddSingleton<IChatModel, AzureOpenAiChatModel>();
-        builder.Services.AddSingleton<IChatModelStreaming, AzureOpenAiChatModelStreaming>();
-        builder.Services.AddSingleton<IEmbeddingModel, AzureOpenAiEmbeddingModel>();
+        builder.Services.AddHttpClient();
+        builder.Services.AddSingleton<AzureOpenAiChatModel>();
+        builder.Services.AddSingleton<AzureOpenAiChatModelStreaming>();
+        builder.Services.AddSingleton<AzureOpenAiEmbeddingModel>();
+        builder.Services.AddSingleton<IChatModel>(sp => sp.GetRequiredService<AzureOpenAiChatModel>());
+        builder.Services.AddSingleton<IChatModelStreaming>(sp => sp.GetRequiredService<AzureOpenAiChatModelStreaming>());
+        builder.Services.AddSingleton<IEmbeddingModel>(sp => sp.GetRequiredService<AzureOpenAiEmbeddingModel>());
         builder.Services.AddSingleton<ILLMProvider, AzureOpenAiLLMProvider>();
 
         return builder;
@@ -197,8 +200,9 @@ public static class ServiceCollectionExtensions
     public static IBipinsAIBuilder AddQdrant(this IBipinsAIBuilder builder, Action<QdrantOptions> configure)
     {
         builder.Services.Configure(configure);
-        builder.Services.AddHttpClient<QdrantVectorStore>();
-        builder.Services.AddSingleton<IVectorStore, QdrantVectorStore>();
+        builder.Services.AddHttpClient();
+        builder.Services.AddSingleton<QdrantVectorStore>();
+        builder.Services.AddSingleton<IVectorStore>(sp => sp.GetRequiredService<QdrantVectorStore>());
 
         return builder;
     }
@@ -209,8 +213,9 @@ public static class ServiceCollectionExtensions
     public static IBipinsAIBuilder AddPinecone(this IBipinsAIBuilder builder, Action<PineconeOptions> configure)
     {
         builder.Services.Configure(configure);
-        builder.Services.AddHttpClient<PineconeVectorStore>();
-        builder.Services.AddSingleton<IVectorStore, PineconeVectorStore>();
+        builder.Services.AddHttpClient();
+        builder.Services.AddSingleton<PineconeVectorStore>();
+        builder.Services.AddSingleton<IVectorStore>(sp => sp.GetRequiredService<PineconeVectorStore>());
 
         return builder;
     }
@@ -221,8 +226,9 @@ public static class ServiceCollectionExtensions
     public static IBipinsAIBuilder AddWeaviate(this IBipinsAIBuilder builder, Action<WeaviateOptions> configure)
     {
         builder.Services.Configure(configure);
-        builder.Services.AddHttpClient<WeaviateVectorStore>();
-        builder.Services.AddSingleton<IVectorStore, WeaviateVectorStore>();
+        builder.Services.AddHttpClient();
+        builder.Services.AddSingleton<WeaviateVectorStore>();
+        builder.Services.AddSingleton<IVectorStore>(sp => sp.GetRequiredService<WeaviateVectorStore>());
 
         return builder;
     }
@@ -233,8 +239,9 @@ public static class ServiceCollectionExtensions
     public static IBipinsAIBuilder AddMilvus(this IBipinsAIBuilder builder, Action<MilvusOptions> configure)
     {
         builder.Services.Configure(configure);
-        builder.Services.AddHttpClient<MilvusVectorStore>();
-        builder.Services.AddSingleton<IVectorStore, MilvusVectorStore>();
+        builder.Services.AddHttpClient();
+        builder.Services.AddSingleton<MilvusVectorStore>();
+        builder.Services.AddSingleton<IVectorStore>(sp => sp.GetRequiredService<MilvusVectorStore>());
 
         return builder;
     }

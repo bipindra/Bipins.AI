@@ -15,7 +15,7 @@ public class QdrantVectorIntegrationTests : IClassFixture<IntegrationTestFixture
         _fixture = fixture;
     }
 
-    [Fact(Skip = "Requires Qdrant endpoint and running instance")]
+    [Fact]
     public async Task QdrantVectorStore_UpsertAndQuery_Works()
     {
         var endpoint = Environment.GetEnvironmentVariable("QDRANT_ENDPOINT");

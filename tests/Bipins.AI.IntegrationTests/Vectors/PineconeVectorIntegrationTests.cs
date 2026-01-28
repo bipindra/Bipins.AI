@@ -15,7 +15,7 @@ public class PineconeVectorIntegrationTests : IClassFixture<IntegrationTestFixtu
         _fixture = fixture;
     }
 
-    [Fact(Skip = "Requires Pinecone API key and index")]
+    [Fact]
     public async Task PineconeVectorStore_UpsertAndQuery_Works()
     {
         var apiKey = Environment.GetEnvironmentVariable("PINECONE_API_KEY");
