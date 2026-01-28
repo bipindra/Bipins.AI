@@ -1,4 +1,4 @@
-using Bipins.AI.Runtime.Caching;
+using Bipins.AI.Caching;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Logging;
 using Moq;

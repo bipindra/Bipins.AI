@@ -64,12 +64,14 @@ public class IngestionComponentTests
     }
 
     [Fact]
-    public void DefaultChunkingStrategyFactory_GetStrategy_NoFallback_ThrowsException()
+    public void DefaultChunkingStrategyFactory_GetStrategy_NoFallback_ReturnsFixedSizeFallback()
     {
         var strategies = Array.Empty<IChunkingStrategy>();
         var factory = new DefaultChunkingStrategyFactory(strategies, _factoryLogger.Object);
 
-        Assert.Throws<InvalidOperationException>(() => factory.GetStrategy(ChunkStrategy.FixedSize));
+        var strategy = factory.GetStrategy(ChunkStrategy.FixedSize);
+        Assert.NotNull(strategy);
+        Assert.Equal(ChunkStrategy.FixedSize, strategy.StrategyType);
     }
 
     [Fact]
