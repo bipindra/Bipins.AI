@@ -106,21 +106,21 @@ public class OpenAiChatModelStreaming : IChatModelStreaming
 #endif
         using var reader = new StreamReader(stream);
 
-        while (!reader.EndOfStream && !cancellationToken.IsCancellationRequested)
+        string? line;
+        while ((line = await reader.ReadLineAsync()) != null && !cancellationToken.IsCancellationRequested)
         {
-            var line = await reader.ReadLineAsync();
             if (string.IsNullOrWhiteSpace(line))
                 continue;
 
             // OpenAI streaming format: "data: {...}\n\n"
-            if (line.StartsWith("data: "))
+            if (line.StartsWith("data: ", StringComparison.Ordinal))
             {
                 var json = line.Substring(6); // Remove "data: " prefix
 
-                if (json == "[DONE]")
+                if (json.Trim() == "[DONE]")
                 {
                     // Final chunk with usage if available
-                    if (cumulativeUsage != null)
+                    if (cumulativeUsage != null || !string.IsNullOrEmpty(finishReason))
                     {
                         yield return new ChatResponseChunk(
                             string.Empty,
@@ -132,7 +132,21 @@ public class OpenAiChatModelStreaming : IChatModelStreaming
                     yield break;
                 }
 
-                var chunkResponse = JsonSerializer.Deserialize<OpenAiStreamChunk>(json);
+                OpenAiStreamChunk? chunkResponse = null;
+                try
+                {
+                    chunkResponse = JsonSerializer.Deserialize<OpenAiStreamChunk>(json, new JsonSerializerOptions
+                    {
+                        PropertyNameCaseInsensitive = true
+                    });
+                }
+                catch (JsonException ex)
+                {
+                    _logger.LogWarning(ex, "Failed to deserialize streaming chunk: {Json}", json);
+                    // Continue processing other chunks
+                    continue;
+                }
+                
                 if (chunkResponse?.Choices != null && chunkResponse.Choices.Count > 0)
                 {
                     var choice = chunkResponse.Choices[0];
@@ -188,15 +202,24 @@ public class OpenAiChatModelStreaming : IChatModelStreaming
 /// Internal DTO for OpenAI streaming chunk.
 /// </summary>
 internal record OpenAiStreamChunk(
-    string Id,
-    string Model,
-    List<OpenAiStreamChoice> Choices,
-    OpenAiUsage? Usage);
+    [property: System.Text.Json.Serialization.JsonPropertyName("id")] string? Id,
+    [property: System.Text.Json.Serialization.JsonPropertyName("model")] string? Model,
+    [property: System.Text.Json.Serialization.JsonPropertyName("choices")] List<OpenAiStreamChoice>? Choices,
+    [property: System.Text.Json.Serialization.JsonPropertyName("usage")] OpenAiUsage? Usage);
 
 /// <summary>
 /// Internal DTO for OpenAI streaming choice.
 /// </summary>
 internal record OpenAiStreamChoice(
-    OpenAiChatMessage? Delta,
-    string? FinishReason);
+    [property: System.Text.Json.Serialization.JsonPropertyName("index")] int? Index,
+    [property: System.Text.Json.Serialization.JsonPropertyName("delta")] OpenAiStreamDelta? Delta,
+    [property: System.Text.Json.Serialization.JsonPropertyName("finish_reason")] string? FinishReason);
+
+/// <summary>
+/// Internal DTO for OpenAI streaming delta (content only, not full message).
+/// </summary>
+internal record OpenAiStreamDelta(
+    [property: System.Text.Json.Serialization.JsonPropertyName("content")] string? Content,
+    [property: System.Text.Json.Serialization.JsonPropertyName("role")] string? Role,
+    [property: System.Text.Json.Serialization.JsonPropertyName("tool_calls")] IReadOnlyList<OpenAiToolCall>? ToolCalls);
 

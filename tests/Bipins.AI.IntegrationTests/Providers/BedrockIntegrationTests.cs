@@ -18,7 +18,7 @@ public class BedrockIntegrationTests : IClassFixture<IntegrationTestFixture>
         _fixture = fixture;
     }
 
-    [Fact(Skip = "Requires AWS credentials and Bedrock access")]
+    [Fact(Skip = "Requires AWS Bedrock access with Anthropic model enabled")]
     public async Task BedrockChatModel_GenerateAsync_ReturnsResponse()
     {
         var region = Environment.GetEnvironmentVariable("AWS_REGION") ?? "us-east-1";
@@ -88,5 +88,46 @@ public class BedrockIntegrationTests : IClassFixture<IntegrationTestFixture>
         Assert.NotNull(response.Content);
         // Response should be in uppercase (or at least contain uppercase letters)
         Assert.True(response.Content.Any(char.IsUpper));
+    }
+
+    [Fact(Skip = "Requires AWS Bedrock access with Anthropic model enabled")]
+    public async Task BedrockLLMProvider_ChatAsync_ReturnsResponse()
+    {
+        var region = Environment.GetEnvironmentVariable("AWS_REGION") ?? "us-east-1";
+        var accessKeyId = Environment.GetEnvironmentVariable("AWS_ACCESS_KEY_ID");
+        var secretAccessKey = Environment.GetEnvironmentVariable("AWS_SECRET_ACCESS_KEY");
+
+        if (string.IsNullOrEmpty(accessKeyId) || string.IsNullOrEmpty(secretAccessKey))
+        {
+            return;
+        }
+
+        var chatLogger = _fixture.Services.GetRequiredService<ILogger<BedrockChatModel>>();
+        var streamingLogger = _fixture.Services.GetRequiredService<ILogger<BedrockChatModelStreaming>>();
+        var providerLogger = _fixture.Services.GetRequiredService<ILogger<BedrockLLMProvider>>();
+
+        var options = Options.Create(new BedrockOptions
+        {
+            Region = region,
+            DefaultModelId = "anthropic.claude-3-haiku-20240307-v1:0",
+            AccessKeyId = accessKeyId,
+            SecretAccessKey = secretAccessKey
+        });
+
+        var chatModel = new BedrockChatModel(options, chatLogger);
+        var streamingModel = new BedrockChatModelStreaming(options, streamingLogger);
+
+        var provider = new BedrockLLMProvider(chatModel, streamingModel, options, providerLogger);
+
+        var request = new ChatRequest(new[]
+        {
+            new Message(MessageRole.User, "Say 'Hello from Bedrock LLM provider' and nothing else.")
+        });
+
+        var response = await provider.ChatAsync(request);
+
+        Assert.NotNull(response);
+        Assert.NotNull(response.Content);
+        Assert.Contains("Hello", response.Content, StringComparison.OrdinalIgnoreCase);
     }
 }

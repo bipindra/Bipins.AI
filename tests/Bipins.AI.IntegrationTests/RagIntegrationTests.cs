@@ -19,7 +19,7 @@ public class RagIntegrationTests : IClassFixture<IntegrationTestFixture>
         _fixture = fixture;
     }
 
-    [Fact(Skip = "Requires OpenAI API key")]
+    [Fact(Skip = "Requires OpenAI API key and Qdrant instance")]
     public async Task EndToEndRagFlow_RetrievesAndComposes()
     {
         var pipeline = _fixture.Services.GetRequiredService<IngestionPipeline>();

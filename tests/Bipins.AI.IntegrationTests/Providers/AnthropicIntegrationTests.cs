@@ -100,4 +100,41 @@ public class AnthropicIntegrationTests : IClassFixture<IntegrationTestFixture>
             Assert.Equal("get_weather", response.ToolCalls[0].Name);
         }
     }
+
+    [Fact(Skip = "Requires Anthropic API key")]
+    public async Task AnthropicLLMProvider_ChatAsync_ReturnsResponse()
+    {
+        var apiKey = Environment.GetEnvironmentVariable("ANTHROPIC_API_KEY");
+        if (string.IsNullOrEmpty(apiKey))
+        {
+            return;
+        }
+
+        var httpClientFactory = _fixture.Services.GetRequiredService<IHttpClientFactory>();
+        var chatLogger = _fixture.Services.GetRequiredService<ILogger<AnthropicChatModel>>();
+        var streamingLogger = _fixture.Services.GetRequiredService<ILogger<AnthropicChatModelStreaming>>();
+        var providerLogger = _fixture.Services.GetRequiredService<ILogger<AnthropicLLMProvider>>();
+
+        var options = Options.Create(new AnthropicOptions
+        {
+            ApiKey = apiKey,
+            DefaultChatModelId = "claude-3-haiku-20240307"
+        });
+
+        var chatModel = new AnthropicChatModel(httpClientFactory, options, chatLogger);
+        var streamingModel = new AnthropicChatModelStreaming(httpClientFactory, options, streamingLogger);
+
+        var provider = new AnthropicLLMProvider(chatModel, streamingModel, options, providerLogger);
+
+        var request = new ChatRequest(new[]
+        {
+            new Message(MessageRole.User, "Say 'Hello from Anthropic LLM provider' and nothing else.")
+        });
+
+        var response = await provider.ChatAsync(request);
+
+        Assert.NotNull(response);
+        Assert.NotNull(response.Content);
+        Assert.Contains("Hello", response.Content, StringComparison.OrdinalIgnoreCase);
+    }
 }

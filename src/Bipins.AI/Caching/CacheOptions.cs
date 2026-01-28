@@ -1,4 +1,4 @@
-namespace Bipins.AI.Runtime.Caching;
+namespace Bipins.AI.Caching;
 
 /// <summary>
 /// Options for cache configuration.

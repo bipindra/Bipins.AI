@@ -102,4 +102,49 @@ public class AzureOpenAiIntegrationTests : IClassFixture<IntegrationTestFixture>
             Assert.True(response.StructuredOutput.Value.TryGetProperty("age", out _));
         }
     }
+
+    [Fact(Skip = "Requires Azure OpenAI API key")]
+    public async Task AzureOpenAiLLMProvider_ChatAsync_ReturnsResponse()
+    {
+        var apiKey = Environment.GetEnvironmentVariable("AZURE_OPENAI_API_KEY");
+        var endpoint = Environment.GetEnvironmentVariable("AZURE_OPENAI_ENDPOINT");
+        var deploymentName = Environment.GetEnvironmentVariable("AZURE_OPENAI_DEPLOYMENT_NAME") ?? "gpt-35-turbo";
+        var embeddingDeployment = Environment.GetEnvironmentVariable("AZURE_OPENAI_EMBEDDING_DEPLOYMENT") ?? "text-embedding-ada-002";
+
+        if (string.IsNullOrEmpty(apiKey) || string.IsNullOrEmpty(endpoint))
+        {
+            return;
+        }
+
+        var httpClientFactory = _fixture.Services.GetRequiredService<IHttpClientFactory>();
+        var chatLogger = _fixture.Services.GetRequiredService<ILogger<AzureOpenAiChatModel>>();
+        var streamingLogger = _fixture.Services.GetRequiredService<ILogger<AzureOpenAiChatModelStreaming>>();
+        var embeddingLogger = _fixture.Services.GetRequiredService<ILogger<AzureOpenAiEmbeddingModel>>();
+        var providerLogger = _fixture.Services.GetRequiredService<ILogger<AzureOpenAiLLMProvider>>();
+
+        var options = Options.Create(new AzureOpenAiOptions
+        {
+            ApiKey = apiKey,
+            Endpoint = endpoint,
+            DefaultChatDeploymentName = deploymentName,
+            DefaultEmbeddingDeploymentName = embeddingDeployment
+        });
+
+        var chatModel = new AzureOpenAiChatModel(httpClientFactory, options, chatLogger);
+        var streamingModel = new AzureOpenAiChatModelStreaming(httpClientFactory, options, streamingLogger);
+        var embeddingModel = new AzureOpenAiEmbeddingModel(httpClientFactory, options, embeddingLogger);
+
+        var provider = new AzureOpenAiLLMProvider(chatModel, streamingModel, embeddingModel, options, providerLogger);
+
+        var request = new ChatRequest(new[]
+        {
+            new Message(MessageRole.User, "Say 'Hello from Azure LLM provider' and nothing else.")
+        });
+
+        var response = await provider.ChatAsync(request);
+
+        Assert.NotNull(response);
+        Assert.NotNull(response.Content);
+        Assert.Contains("Hello", response.Content, StringComparison.OrdinalIgnoreCase);
+    }
 }

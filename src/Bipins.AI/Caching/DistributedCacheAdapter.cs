@@ -2,7 +2,7 @@ using System.Text.Json;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Logging;
 
-namespace Bipins.AI.Runtime.Caching;
+namespace Bipins.AI.Caching;
 
 /// <summary>
 /// Cache implementation based on IDistributedCache.
@@ -77,8 +77,6 @@ public class DistributedCacheAdapter : ICache
         }
     }
 
-    private string GetFullKey(string key)
-    {
-        return $"{_keyPrefix}{key}";
-    }
+    private string GetFullKey(string key) => $"{_keyPrefix}{key}";
 }
+

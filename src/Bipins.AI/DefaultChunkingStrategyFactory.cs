@@ -1,5 +1,7 @@
 using Bipins.AI.Core.Ingestion;
+using Bipins.AI.Ingestion.Strategies;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Bipins.AI.Ingestion;
 
@@ -35,6 +37,7 @@ public class DefaultChunkingStrategyFactory : IChunkingStrategyFactory
             return fallback;
         }
 
-        throw new InvalidOperationException($"No chunking strategy found for {strategy} and no fallback available");
+        // Ultimate fallback: construct a default fixed-size strategy if none were registered
+        return new FixedSizeChunkingStrategy(NullLogger<FixedSizeChunkingStrategy>.Instance);
     }
 }

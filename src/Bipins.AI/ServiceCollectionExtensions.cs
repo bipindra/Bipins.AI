@@ -9,7 +9,7 @@ using Bipins.AI.Core.Runtime.Policies;
 using Bipins.AI.Core.CostTracking;
 using Bipins.AI.Core.Models;
 using Bipins.AI.Vector;
-using Bipins.AI.Runtime.Caching;
+using Bipins.AI.Caching;
 using Bipins.AI.Runtime.Policies;
 using Bipins.AI.Runtime.Routing;
 using Bipins.AI.Runtime.Pipeline;
@@ -93,10 +93,10 @@ public static class ServiceCollectionExtensions
     public static IServiceCollection AddBipinsAIIngestion(this IServiceCollection services)
     {
         // Register chunking strategies
-        services.AddSingleton<FixedSizeChunkingStrategy>();
-        services.AddSingleton<SentenceAwareChunkingStrategy>();
-        services.AddSingleton<ParagraphChunkingStrategy>();
-        services.AddSingleton<MarkdownAwareChunkingStrategy>();
+        services.AddSingleton<IChunkingStrategy, FixedSizeChunkingStrategy>();
+        services.AddSingleton<IChunkingStrategy, SentenceAwareChunkingStrategy>();
+        services.AddSingleton<IChunkingStrategy, ParagraphChunkingStrategy>();
+        services.AddSingleton<IChunkingStrategy, MarkdownAwareChunkingStrategy>();
         
         // Register strategy factory
         services.AddSingleton<IChunkingStrategyFactory, DefaultChunkingStrategyFactory>();
