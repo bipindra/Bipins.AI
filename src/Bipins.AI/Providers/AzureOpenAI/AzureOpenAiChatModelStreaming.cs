@@ -82,7 +82,11 @@ public class AzureOpenAiChatModelStreaming : IChatModelStreaming
         Usage? cumulativeUsage = null;
         string? finishReason = null;
 
+#if NETSTANDARD2_1
+        using var stream = await response.Content.ReadAsStreamAsync();
+#else
         using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+#endif
         using var reader = new StreamReader(stream);
 
         while (!reader.EndOfStream && !cancellationToken.IsCancellationRequested)

@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Bipins.AI.Core;
 using Bipins.AI.Core.Models;
 using Bipins.AI.Providers.Anthropic.Models;
 using Microsoft.Extensions.Logging;
@@ -84,10 +85,19 @@ public class AnthropicChatModelStreaming : IChatModelStreaming
             anthropicTools);
 
         // Add stream parameter
+#if NET7_0_OR_GREATER && !NET8_0_OR_GREATER
+        // .NET 7 doesn't have JsonNamingPolicy.SnakeCaseLower, use custom implementation
+        var requestJson = JsonSerializer.Serialize(anthropicRequest, new JsonSerializerOptions
+        {
+            PropertyNamingPolicy = SnakeCaseLowerNamingPolicy.Instance
+        });
+#else
+        // .NET 8+ has built-in SnakeCaseLower
         var requestJson = JsonSerializer.Serialize(anthropicRequest, new JsonSerializerOptions
         {
             PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower
         });
+#endif
 
         // Anthropic uses Server-Sent Events (SSE) format
         var requestContent = new StringContent(requestJson, System.Text.Encoding.UTF8, "application/json");
@@ -117,7 +127,11 @@ public class AnthropicChatModelStreaming : IChatModelStreaming
         Usage? cumulativeUsage = null;
         string? finishReason = null;
 
+#if NETSTANDARD2_1
+        using var stream = await response.Content.ReadAsStreamAsync();
+#else
         using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+#endif
         using var reader = new StreamReader(stream);
 
         while (!reader.EndOfStream && !cancellationToken.IsCancellationRequested)

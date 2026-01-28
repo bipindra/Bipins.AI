@@ -4,38 +4,74 @@
     <RootNamespace>Bipins.AI</RootNamespace>
     <PackageId>Bipins.AI</PackageId>
     <Description>Bipins.AI - Enterprise AI platform for building intelligent applications with RAG (Retrieval-Augmented Generation), multiple LLM providers, and vector databases. Includes Core, Runtime, Ingestion, Providers (OpenAI, Anthropic, Azure OpenAI, Bedrock), and Vector integrations (Qdrant, Pinecone, Weaviate, Milvus).</Description>
-    <TargetFramework>net8.0</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
+    <TargetFramework /> <!-- Clear any inherited TargetFramework -->
+    <TargetFrameworks>netstandard2.1;net7.0;net8.0;net9.0;net10.0</TargetFrameworks>
+    <ImplicitUsings Condition="'$(TargetFramework)' != 'netstandard2.1'">enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageProjectUrl>https://github.com/bipindra/Bipins.AI</PackageProjectUrl>
   </PropertyGroup>
 
-  <ItemGroup>
+    <ItemGroup>
     <None Include="README.md" Pack="true" PackagePath="" />
-  </ItemGroup>
-
+    </ItemGroup>
+    
   <!-- Package dependencies from all referenced projects -->
   <!-- These are included in the NuGet package so consumers get the required dependencies -->
-  <ItemGroup>
-    <!-- Core dependencies -->
-    <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="8.0.0" />
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="8.0.0" />
-    <PackageReference Include="Microsoft.Extensions.Options" Version="8.0.0" />
+    <ItemGroup>
+    <!-- Core dependencies - version varies by target framework -->
+    <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="8.0.0" Condition="'$(TargetFramework)' == 'netstandard2.1' OR '$(TargetFramework)' == 'net8.0'" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="7.0.0" Condition="'$(TargetFramework)' == 'net7.0'" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="9.0.0" Condition="'$(TargetFramework)' == 'net9.0'" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="10.0.0" Condition="'$(TargetFramework)' == 'net10.0'" />
+    
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="8.0.0" Condition="'$(TargetFramework)' == 'netstandard2.1' OR '$(TargetFramework)' == 'net8.0'" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="7.0.0" Condition="'$(TargetFramework)' == 'net7.0'" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="9.0.0" Condition="'$(TargetFramework)' == 'net9.0'" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.0" Condition="'$(TargetFramework)' == 'net10.0'" />
+    
+    <PackageReference Include="Microsoft.Extensions.Options" Version="8.0.0" Condition="'$(TargetFramework)' == 'netstandard2.1' OR '$(TargetFramework)' == 'net8.0'" />
+    <PackageReference Include="Microsoft.Extensions.Options" Version="7.0.0" Condition="'$(TargetFramework)' == 'net7.0'" />
+    <PackageReference Include="Microsoft.Extensions.Options" Version="9.0.0" Condition="'$(TargetFramework)' == 'net9.0'" />
+    <PackageReference Include="Microsoft.Extensions.Options" Version="10.0.0" Condition="'$(TargetFramework)' == 'net10.0'" />
     
     <!-- Runtime dependencies -->
-    <PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="8.0.0" />
-    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.0" />
-    <PackageReference Include="System.Diagnostics.DiagnosticSource" Version="8.0.1" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="8.0.0" Condition="'$(TargetFramework)' == 'netstandard2.1' OR '$(TargetFramework)' == 'net8.0'" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="7.0.0" Condition="'$(TargetFramework)' == 'net7.0'" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="9.0.0" Condition="'$(TargetFramework)' == 'net9.0'" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="10.0.0" Condition="'$(TargetFramework)' == 'net10.0'" />
+    
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.0" Condition="'$(TargetFramework)' == 'netstandard2.1' OR '$(TargetFramework)' == 'net8.0'" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="7.0.0" Condition="'$(TargetFramework)' == 'net7.0'" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.0" Condition="'$(TargetFramework)' == 'net9.0'" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.0" Condition="'$(TargetFramework)' == 'net10.0'" />
+    
+    <PackageReference Include="System.Diagnostics.DiagnosticSource" Version="8.0.1" Condition="'$(TargetFramework)' == 'netstandard2.1' OR '$(TargetFramework)' == 'net8.0'" />
+    <PackageReference Include="System.Diagnostics.DiagnosticSource" Version="7.0.0" Condition="'$(TargetFramework)' == 'net7.0'" />
+    <PackageReference Include="System.Diagnostics.DiagnosticSource" Version="9.0.0" Condition="'$(TargetFramework)' == 'net9.0'" />
+    <PackageReference Include="System.Diagnostics.DiagnosticSource" Version="10.0.0" Condition="'$(TargetFramework)' == 'net10.0'" />
+    
     <PackageReference Include="StackExchange.Redis" Version="2.10.1" />
     
     <!-- HTTP and provider dependencies -->
-    <PackageReference Include="Microsoft.Extensions.Http" Version="8.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Http" Version="8.0.0" Condition="'$(TargetFramework)' == 'netstandard2.1' OR '$(TargetFramework)' == 'net8.0'" />
+    <PackageReference Include="Microsoft.Extensions.Http" Version="7.0.0" Condition="'$(TargetFramework)' == 'net7.0'" />
+    <PackageReference Include="Microsoft.Extensions.Http" Version="9.0.0" Condition="'$(TargetFramework)' == 'net9.0'" />
+    <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.0" Condition="'$(TargetFramework)' == 'net10.0'" />
+    <PackageReference Include="System.Net.Http.Json" Version="8.0.0" Condition="'$(TargetFramework)' == 'netstandard2.1'" />
     
     <!-- Bedrock-specific dependencies -->
     <PackageReference Include="AWSSDK.BedrockRuntime" Version="3.7.401" />
-    <PackageReference Include="System.Linq.Async" Version="6.0.1" />
-    <PackageReference Include="System.Text.Json" Version="8.0.5" />
+    <!-- System.Linq.Async is needed for frameworks other than .NET 10 (which has built-in support) -->
+    <PackageReference Include="System.Linq.Async" Version="6.0.1" Condition="'$(TargetFramework)' != 'net10.0'" />
+    
+    <!-- System.Text.Json - version varies by target framework -->
+    <PackageReference Include="System.Text.Json" Version="8.0.5" Condition="'$(TargetFramework)' == 'netstandard2.1' OR '$(TargetFramework)' == 'net7.0' OR '$(TargetFramework)' == 'net8.0'" />
+    <PackageReference Include="System.Text.Json" Version="9.0.0" Condition="'$(TargetFramework)' == 'net9.0'" />
+    <PackageReference Include="System.Text.Json" Version="10.0.0" Condition="'$(TargetFramework)' == 'net10.0'" />
+    
+    <!-- Polyfill for init accessors in .NET Standard 2.1 -->
+    <PackageReference Include="System.Runtime.CompilerServices.Unsafe" Version="6.0.0" Condition="'$(TargetFramework)' == 'netstandard2.1'" />
   </ItemGroup>
 
 </Project>

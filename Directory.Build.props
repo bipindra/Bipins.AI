@@ -1,9 +1,10 @@
 <Project>
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
+    <!-- Default target framework for projects that don't specify TargetFrameworks -->
+    <TargetFramework Condition="'$(TargetFrameworks)' == '' AND '$(TargetFramework)' == ''">net8.0</TargetFramework>
     <LangVersion>12.0</LangVersion>
     <Nullable>enable</Nullable>
-    <ImplicitUsings>enable</ImplicitUsings>
+    <ImplicitUsings Condition="'$(TargetFramework)' != 'netstandard2.1' AND '$(TargetFrameworks)' == ''">enable</ImplicitUsings>
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
     <WarningsAsErrors />
     <WarningsNotAsErrors />

@@ -131,7 +131,8 @@ public class BedrockChatModelStreaming : IChatModelStreaming
         var accumulatedText = new StringBuilder();
 
         // Process stream events - ResponseStream needs to be converted to IAsyncEnumerable
-        await foreach (var eventStream in response.Body.ToAsyncEnumerable())
+        // Use fully qualified name to avoid ambiguity with .NET 10's built-in AsyncEnumerable
+        await foreach (var eventStream in global::System.Linq.AsyncEnumerable.ToAsyncEnumerable(response.Body))
         {
             if (cancellationToken.IsCancellationRequested)
             {
@@ -189,9 +190,17 @@ public class BedrockChatModelStreaming : IChatModelStreaming
 
             // Read the chunk JSON from the stream
             string chunkJson;
+#if NETSTANDARD2_1
+            using (var reader = new StreamReader(chunkStream, Encoding.UTF8, true, 1024, true))
+#else
             using (var reader = new StreamReader(chunkStream, Encoding.UTF8, leaveOpen: true))
+#endif
             {
+#if NETSTANDARD2_1
+                chunkJson = await reader.ReadToEndAsync();
+#else
                 chunkJson = await reader.ReadToEndAsync(cancellationToken);
+#endif
             }
 
             if (string.IsNullOrWhiteSpace(chunkJson))

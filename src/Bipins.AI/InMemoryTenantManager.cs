@@ -34,7 +34,7 @@ public class InMemoryTenantManager : ITenantManager
     public Task<TenantInfo?> GetTenantAsync(string tenantId, CancellationToken cancellationToken = default)
     {
         _tenants.TryGetValue(tenantId, out var tenant);
-        return Task.FromResult(tenant);
+        return Task.FromResult<TenantInfo?>(tenant);
     }
 
     /// <inheritdoc />

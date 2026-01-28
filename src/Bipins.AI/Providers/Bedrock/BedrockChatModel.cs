@@ -126,7 +126,11 @@ public class BedrockChatModel : IChatModel
                 var response = await _bedrockClient.InvokeModelAsync(invokeRequest, cancellationToken);
 
                 using var reader = new StreamReader(response.Body);
+#if NETSTANDARD2_1
+                var responseJson = await reader.ReadToEndAsync();
+#else
                 var responseJson = await reader.ReadToEndAsync(cancellationToken);
+#endif
                 var bedrockResponse = JsonSerializer.Deserialize<BedrockChatResponse>(
                     responseJson,
                     new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
