@@ -1,5 +1,5 @@
 using Bipins.AI.Core.Ingestion;
-using Bipins.AI.Core.Vector;
+using Bipins.AI.Vector;
 using Microsoft.Extensions.Logging;
 
 namespace Bipins.AI.Ingestion;

@@ -1,4 +1,4 @@
-namespace Bipins.AI.Core.Vector;
+namespace Bipins.AI.Vector;
 
 /// <summary>
 /// Logical OR filter (any condition must match).

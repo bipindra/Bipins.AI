@@ -1,4 +1,4 @@
-namespace Bipins.AI.Core.Vector;
+namespace Bipins.AI.Vector;
 
 /// <summary>
 /// Request to upsert vector records.

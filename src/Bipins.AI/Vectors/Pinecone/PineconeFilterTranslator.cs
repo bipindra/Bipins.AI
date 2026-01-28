@@ -1,4 +1,4 @@
-using Bipins.AI.Core.Vector;
+using Bipins.AI.Vector;
 
 namespace Bipins.AI.Vectors.Pinecone;
 

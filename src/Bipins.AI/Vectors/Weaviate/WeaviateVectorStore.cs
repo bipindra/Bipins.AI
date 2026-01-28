@@ -3,7 +3,7 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
-using Bipins.AI.Core.Vector;
+using Bipins.AI.Vector;
 using Bipins.AI.Vectors.Weaviate.Models;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;

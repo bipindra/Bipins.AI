@@ -1,6 +1,6 @@
 using System.Text.Json;
 using Bipins.AI.Vectors.Qdrant;
-using Bipins.AI.Core.Vector;
+using Bipins.AI.Vector;
 using Xunit;
 
 namespace Bipins.AI.UnitTests;

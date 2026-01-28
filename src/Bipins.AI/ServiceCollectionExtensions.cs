@@ -8,7 +8,7 @@ using Bipins.AI.Core.Rag;
 using Bipins.AI.Core.Runtime.Policies;
 using Bipins.AI.Core.CostTracking;
 using Bipins.AI.Core.Models;
-using Bipins.AI.Core.Vector;
+using Bipins.AI.Vector;
 using Bipins.AI.Runtime.Caching;
 using Bipins.AI.Runtime.Policies;
 using Bipins.AI.Runtime.Routing;
@@ -17,6 +17,7 @@ using Bipins.AI.Runtime.Rag;
 using Bipins.AI.Runtime.CostTracking;
 using Bipins.AI.Ingestion;
 using Bipins.AI.Ingestion.Strategies;
+using Bipins.AI.Providers;
 using Bipins.AI.Providers.OpenAI;
 using Bipins.AI.Providers.Anthropic;
 using Bipins.AI.Providers.AzureOpenAI;
@@ -64,46 +65,20 @@ public static class ServiceCollectionExtensions
             var defaultTtl = configuration?.GetValue<int>("Cache:DefaultTtlHours", 1);
             options.DefaultTtl = TimeSpan.FromHours(defaultTtl ?? 1);
             options.KeyPrefix = configuration?.GetValue<string>("Cache:KeyPrefix") ?? "bipins:cache:";
-            options.RedisConnectionString = configuration?.GetConnectionString("Redis");
         });
 
-        // Register cache (use Redis if connection string is provided, otherwise use memory)
-        var redisConnectionString = configuration?.GetConnectionString("Redis");
-        if (!string.IsNullOrEmpty(redisConnectionString))
+        // Register cache - requires IDistributedCache to be registered by the consumer
+        // If IDistributedCache is not registered, this will throw at runtime
+        services.AddSingleton<ICache>(sp =>
         {
-            // Register Redis connection
-            services.AddSingleton<StackExchange.Redis.IConnectionMultiplexer>(sp =>
-                StackExchange.Redis.ConnectionMultiplexer.Connect(redisConnectionString));
-            
-            // Register Redis cache
-            services.AddSingleton<ICache>(sp =>
-            {
-                var redis = sp.GetRequiredService<StackExchange.Redis.IConnectionMultiplexer>();
-                var logger = sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<RedisCache>>();
-                var options = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<CacheOptions>>();
-                return new RedisCache(redis, logger, options.Value.KeyPrefix);
-            });
-        }
-        else
-        {
-            services.AddSingleton<ICache, MemoryCache>();
-        }
+            var distributedCache = sp.GetRequiredService<Microsoft.Extensions.Caching.Distributed.IDistributedCache>();
+            var logger = sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<DistributedCacheAdapter>>();
+            var options = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<CacheOptions>>();
+            return new DistributedCacheAdapter(distributedCache, logger, options.Value.KeyPrefix);
+        });
 
-        // Register rate limiter (use distributed if Redis connection string is provided, otherwise use memory)
-        if (!string.IsNullOrEmpty(redisConnectionString))
-        {
-            services.AddSingleton<IRateLimiter>(sp =>
-            {
-                var redis = sp.GetService<StackExchange.Redis.IConnectionMultiplexer>();
-                return new DistributedRateLimiter(
-                    sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<DistributedRateLimiter>>(),
-                    redis);
-            });
-        }
-        else
-        {
-            services.AddSingleton<IRateLimiter, MemoryRateLimiter>();
-        }
+        // Register rate limiter (use memory-based implementation)
+        services.AddSingleton<IRateLimiter, MemoryRateLimiter>();
 
         // Register cost tracking
         services.AddSingleton<ICostCalculator, DefaultCostCalculator>();
@@ -164,6 +139,7 @@ public static class ServiceCollectionExtensions
         builder.Services.AddSingleton<IChatModel, OpenAiChatModel>();
         builder.Services.AddSingleton<IEmbeddingModel, OpenAiEmbeddingModel>();
         builder.Services.AddSingleton<IChatModelStreaming, OpenAiChatModelStreaming>();
+        builder.Services.AddSingleton<ILLMProvider, OpenAiLLMProvider>();
 
         return builder;
     }
@@ -178,6 +154,7 @@ public static class ServiceCollectionExtensions
         builder.Services.AddHttpClient<AnthropicChatModelStreaming>();
         builder.Services.AddSingleton<IChatModel, AnthropicChatModel>();
         builder.Services.AddSingleton<IChatModelStreaming, AnthropicChatModelStreaming>();
+        builder.Services.AddSingleton<ILLMProvider, AnthropicLLMProvider>();
 
         return builder;
     }
@@ -194,6 +171,7 @@ public static class ServiceCollectionExtensions
         builder.Services.AddSingleton<IChatModel, AzureOpenAiChatModel>();
         builder.Services.AddSingleton<IChatModelStreaming, AzureOpenAiChatModelStreaming>();
         builder.Services.AddSingleton<IEmbeddingModel, AzureOpenAiEmbeddingModel>();
+        builder.Services.AddSingleton<ILLMProvider, AzureOpenAiLLMProvider>();
 
         return builder;
     }
@@ -208,6 +186,7 @@ public static class ServiceCollectionExtensions
         builder.Services.AddSingleton<BedrockChatModelStreaming>();
         builder.Services.AddSingleton<IChatModel>(sp => sp.GetRequiredService<BedrockChatModel>());
         builder.Services.AddSingleton<IChatModelStreaming>(sp => sp.GetRequiredService<BedrockChatModelStreaming>());
+        builder.Services.AddSingleton<ILLMProvider, BedrockLLMProvider>();
 
         return builder;
     }

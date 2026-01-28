@@ -1,6 +1,6 @@
 using Bipins.AI.Core.Ingestion;
 using Bipins.AI.Core.Rag;
-using Bipins.AI.Core.Vector;
+using Bipins.AI.Vector;
 using Xunit;
 
 namespace Bipins.AI.UnitTests.Core;

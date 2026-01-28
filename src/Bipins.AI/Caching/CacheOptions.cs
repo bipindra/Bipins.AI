@@ -14,9 +14,4 @@ public class CacheOptions
     /// Key prefix for cache keys.
     /// </summary>
     public string KeyPrefix { get; set; } = "bipins:cache:";
-
-    /// <summary>
-    /// Redis connection string (if using Redis).
-    /// </summary>
-    public string? RedisConnectionString { get; set; }
 }

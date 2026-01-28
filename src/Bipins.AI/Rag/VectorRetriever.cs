@@ -1,7 +1,7 @@
 using Bipins.AI.Core.Ingestion;
 using Bipins.AI.Core.Models;
 using Bipins.AI.Core.Rag;
-using Bipins.AI.Core.Vector;
+using Bipins.AI.Vector;
 using Bipins.AI.Runtime.Routing;
 using Microsoft.Extensions.Logging;
 

@@ -9,14 +9,12 @@ namespace Bipins.AI.UnitTests.Runtime;
 public class PoliciesTests
 {
     private readonly Mock<ILogger<MemoryRateLimiter>> _memoryLogger;
-    private readonly Mock<ILogger<DistributedRateLimiter>> _distributedLogger;
     private readonly Mock<ILogger<RateLimitingPolicy>> _policyLogger;
     private readonly Mock<ILogger<ThrottlingPolicy>> _throttlingLogger;
 
     public PoliciesTests()
     {
         _memoryLogger = new Mock<ILogger<MemoryRateLimiter>>();
-        _distributedLogger = new Mock<ILogger<DistributedRateLimiter>>();
         _policyLogger = new Mock<ILogger<RateLimitingPolicy>>();
         _throttlingLogger = new Mock<ILogger<ThrottlingPolicy>>();
     }
@@ -132,26 +130,6 @@ public class PoliciesTests
 
         // Should allow exactly 'limit' requests
         Assert.Equal(limit, allowedCount);
-    }
-
-    [Fact]
-    public async Task DistributedRateLimiter_WithoutRedis_AllowsRequests()
-    {
-        var limiter = new DistributedRateLimiter(_distributedLogger.Object, null);
-        var result = await limiter.TryAcquireAsync("key1", 10, TimeSpan.FromMinutes(1));
-
-        Assert.True(result);
-    }
-
-    [Fact]
-    public async Task DistributedRateLimiter_WithRedis_AllowsRequests()
-    {
-        // Create a mock IConnectionMultiplexer or use null (will fall back to in-memory)
-        var limiter = new DistributedRateLimiter(_distributedLogger.Object, null);
-        var result = await limiter.TryAcquireAsync("key1", 10, TimeSpan.FromMinutes(1));
-
-        // Without Redis connection, it falls back to in-memory and allows requests
-        Assert.True(result);
     }
 
     [Fact]

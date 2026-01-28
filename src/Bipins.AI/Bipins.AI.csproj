@@ -12,6 +12,12 @@
     <PackageProjectUrl>https://github.com/bipindra/Bipins.AI</PackageProjectUrl>
   </PropertyGroup>
 
+  <ItemGroup>
+    <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleTo">
+      <_Parameter1>Bipins.AI.UnitTests</_Parameter1>
+    </AssemblyAttribute>
+  </ItemGroup>
+
     <ItemGroup>
     <None Include="README.md" Pack="true" PackagePath="" />
     </ItemGroup>
@@ -51,7 +57,11 @@
     <PackageReference Include="System.Diagnostics.DiagnosticSource" Version="9.0.0" Condition="'$(TargetFramework)' == 'net9.0'" />
     <PackageReference Include="System.Diagnostics.DiagnosticSource" Version="10.0.0" Condition="'$(TargetFramework)' == 'net10.0'" />
     
-    <PackageReference Include="StackExchange.Redis" Version="2.10.1" />
+    <!-- Caching dependencies -->
+    <PackageReference Include="Microsoft.Extensions.Caching.Abstractions" Version="8.0.0" Condition="'$(TargetFramework)' == 'netstandard2.1' OR '$(TargetFramework)' == 'net8.0'" />
+    <PackageReference Include="Microsoft.Extensions.Caching.Abstractions" Version="7.0.0" Condition="'$(TargetFramework)' == 'net7.0'" />
+    <PackageReference Include="Microsoft.Extensions.Caching.Abstractions" Version="9.0.0" Condition="'$(TargetFramework)' == 'net9.0'" />
+    <PackageReference Include="Microsoft.Extensions.Caching.Abstractions" Version="10.0.0" Condition="'$(TargetFramework)' == 'net10.0'" />
     
     <!-- HTTP and provider dependencies -->
     <PackageReference Include="Microsoft.Extensions.Http" Version="8.0.0" Condition="'$(TargetFramework)' == 'netstandard2.1' OR '$(TargetFramework)' == 'net8.0'" />
@@ -62,6 +72,11 @@
     
     <!-- Bedrock-specific dependencies -->
     <PackageReference Include="AWSSDK.BedrockRuntime" Version="3.7.401" />
+    
+    <!-- Official AI Provider SDKs -->
+    <!-- Azure.AI.OpenAI includes OpenAI SDK as a dependency -->
+    <PackageReference Include="Azure.AI.OpenAI" Version="2.1.0" />
+    
     <!-- System.Linq.Async is needed for frameworks other than .NET 10 (which has built-in support) -->
     <PackageReference Include="System.Linq.Async" Version="6.0.1" Condition="'$(TargetFramework)' != 'net10.0'" />
     

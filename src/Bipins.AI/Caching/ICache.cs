@@ -1,7 +1,9 @@
+using Microsoft.Extensions.Caching.Distributed;
+
 namespace Bipins.AI.Runtime.Caching;
 
 /// <summary>
-/// Contract for caching operations.
+/// Contract for caching operations, based on IDistributedCache.
 /// </summary>
 public interface ICache
 {

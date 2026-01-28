@@ -1,5 +1,5 @@
 using Bipins.AI.Core.Models;
-using Bipins.AI.Core.Vector;
+using Bipins.AI.Vector;
 using System.Text.Json;
 using AICostOptimizationAdvisor.Shared.Models;
 

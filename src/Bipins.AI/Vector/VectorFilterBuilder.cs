@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace Bipins.AI.Core.Vector;
+namespace Bipins.AI.Vector;
 
 /// <summary>
 /// Fluent builder for creating VectorFilter expressions.

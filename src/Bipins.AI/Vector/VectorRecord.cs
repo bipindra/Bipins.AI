@@ -1,4 +1,4 @@
-namespace Bipins.AI.Core.Vector;
+namespace Bipins.AI.Vector;
 
 /// <summary>
 /// A vector record stored in a vector database.

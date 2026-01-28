@@ -1,4 +1,4 @@
-namespace Bipins.AI.Core.Vector;
+namespace Bipins.AI.Vector;
 
 /// <summary>
 /// A predicate in a filter expression.

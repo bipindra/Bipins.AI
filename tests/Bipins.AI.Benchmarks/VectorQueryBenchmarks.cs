@@ -1,6 +1,6 @@
 using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Jobs;
-using Bipins.AI.Core.Vector;
+using Bipins.AI.Vector;
 using System.Collections.Generic;
 using System.Linq;
 

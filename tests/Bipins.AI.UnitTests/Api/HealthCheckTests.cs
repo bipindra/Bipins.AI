@@ -1,6 +1,6 @@
 using Bipins.AI.Api.HealthChecks;
 using Bipins.AI.Core.Models;
-using Bipins.AI.Core.Vector;
+using Bipins.AI.Vector;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Moq;
 using Xunit;

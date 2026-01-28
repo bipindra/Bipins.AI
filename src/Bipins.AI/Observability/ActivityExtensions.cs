@@ -1,6 +1,6 @@
 using System.Diagnostics;
 using Bipins.AI.Core.Models;
-using Bipins.AI.Core.Vector;
+using Bipins.AI.Vector;
 
 namespace Bipins.AI.Runtime.Observability;
 

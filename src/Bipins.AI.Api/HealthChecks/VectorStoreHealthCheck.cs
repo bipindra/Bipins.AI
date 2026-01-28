@@ -1,4 +1,4 @@
-using Bipins.AI.Core.Vector;
+using Bipins.AI.Vector;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 namespace Bipins.AI.Api.HealthChecks;

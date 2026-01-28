@@ -1,6 +1,6 @@
 using Bipins.AI.Core.Ingestion;
 using Bipins.AI.Core.Rag;
-using Bipins.AI.Core.Vector;
+using Bipins.AI.Vector;
 using Bipins.AI.Ingestion;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
