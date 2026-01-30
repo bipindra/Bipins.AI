@@ -149,6 +149,72 @@ public class ChatServiceTests
     }
 
     [Fact]
+    public async Task ChatStreamWithToolsAsync_WithTools_ReturnsStreamingChunks()
+    {
+        var tools = new List<ToolDefinition>
+        {
+            new ToolDefinition(
+                "get_weather",
+                "Get weather for a location",
+                JsonSerializer.SerializeToElement(new { type = "object", properties = new { } }))
+        };
+
+        async IAsyncEnumerable<ChatResponseChunk> GetChunks()
+        {
+            yield return new ChatResponseChunk("I'll", false);
+            yield return new ChatResponseChunk(" check", false);
+            yield return new ChatResponseChunk(" the weather.", true);
+        }
+        var chunks = GetChunks();
+
+        _mockLLMProvider.Setup(p => p.ChatStreamAsync(
+                It.Is<ChatRequest>(r => 
+                    r.Messages.Count == 2 &&
+                    r.Tools != null &&
+                    r.Tools.Count == 1 &&
+                    r.Tools[0].Name == "get_weather"),
+                It.IsAny<CancellationToken>()))
+            .Returns(chunks);
+
+        var result = _chatService.ChatStreamWithToolsAsync("System", "Get weather", tools);
+        var resultList = new List<ChatResponseChunk>();
+        await foreach (var chunk in result)
+        {
+            resultList.Add(chunk);
+        }
+
+        Assert.Equal(3, resultList.Count);
+        Assert.Equal("I'll", resultList[0].Content);
+        Assert.Equal(" check", resultList[1].Content);
+        Assert.Equal(" the weather.", resultList[2].Content);
+        Assert.True(resultList[2].IsComplete);
+    }
+
+    [Fact]
+    public async Task ChatStreamWithToolsAsync_WithoutTools_PassesNullTools()
+    {
+        async IAsyncEnumerable<ChatResponseChunk> GetChunks()
+        {
+            yield return new ChatResponseChunk("Response", true);
+        }
+        var chunks = GetChunks();
+
+        _mockLLMProvider.Setup(p => p.ChatStreamAsync(
+                It.Is<ChatRequest>(r => r.Tools == null),
+                It.IsAny<CancellationToken>()))
+            .Returns(chunks);
+
+        var result = _chatService.ChatStreamWithToolsAsync("System", "User", null);
+        var resultList = new List<ChatResponseChunk>();
+        await foreach (var chunk in result)
+        {
+            resultList.Add(chunk);
+        }
+
+        Assert.Single(resultList);
+    }
+
+    [Fact]
     public async Task GenerateEmbeddingAsync_DelegatesToProvider()
     {
         var expectedVector = new float[] { 0.1f, 0.2f, 0.3f };

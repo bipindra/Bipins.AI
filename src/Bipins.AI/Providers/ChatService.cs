@@ -43,6 +43,16 @@ public class ChatService : IChatService
         return _llmProvider.ChatStreamAsync(request, cancellationToken);
     }
     
+    public IAsyncEnumerable<ChatResponseChunk> ChatStreamWithToolsAsync(
+        string systemPrompt,
+        string userMessage,
+        IReadOnlyList<ToolDefinition>? tools = null,
+        CancellationToken cancellationToken = default)
+    {
+        var request = CreateChatRequest(systemPrompt, userMessage, tools);
+        return _llmProvider.ChatStreamAsync(request, cancellationToken);
+    }
+    
     public async Task<float[]> GenerateEmbeddingAsync(string text, CancellationToken cancellationToken = default)
     {
         return await _llmProvider.GenerateEmbeddingAsync(text, cancellationToken);

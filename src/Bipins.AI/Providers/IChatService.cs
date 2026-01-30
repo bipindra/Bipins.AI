@@ -14,5 +14,10 @@ public interface IChatService
         string systemPrompt,
         string userMessage,
         CancellationToken cancellationToken = default);
+    IAsyncEnumerable<ChatResponseChunk> ChatStreamWithToolsAsync(
+        string systemPrompt,
+        string userMessage,
+        IReadOnlyList<ToolDefinition>? tools = null,
+        CancellationToken cancellationToken = default);
     Task<float[]> GenerateEmbeddingAsync(string text, CancellationToken cancellationToken = default);
 }

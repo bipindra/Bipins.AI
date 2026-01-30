@@ -28,6 +28,8 @@ dotnet add package Bipins.AI
 - **Caching**: Distributed cache support via `IDistributedCache`
 - **Observability**: OpenTelemetry integration for distributed tracing
 
+The library includes comprehensive sample applications demonstrating RAG workflows, cost optimization analysis, and serverless architectures. See the [Samples](#samples) section for details.
+
 ## Quick Start
 
 ### Basic Setup
@@ -389,6 +391,16 @@ services
 - .NET Standard 2.1, .NET 7.0, .NET 8.0, .NET 9.0, or .NET 10.0
 - For vector stores: Qdrant, Pinecone, Weaviate, or Milvus instance
 - For LLM providers: API keys for respective providers
+
+## Samples
+
+The repository includes comprehensive sample applications demonstrating various use cases and integrations with Bipins.AI. These samples showcase real-world implementations including RAG workflows, cost optimization analysis, and serverless architectures.
+
+a) **Bipins.AI.Samples** - A console application demonstrating core RAG (Retrieval-Augmented Generation) capabilities. This sample shows how to ingest documents, perform vector-based retrieval, and compose augmented chat requests. It includes examples of document loading, chunking strategies, embedding generation, and querying with citations.
+
+b) **AICloudCostOptimizationAdvisor** - A web application that analyzes Terraform infrastructure scripts to provide AI-powered cost optimization and security risk assessment. Built with ASP.NET Core MVC, it demonstrates multi-cloud cost analysis (AWS, Azure, GCP), security vulnerability detection, compliance framework mapping, and interactive visualization of architecture improvements and cost breakdowns.
+
+c) **AICostOptimizationAdvisor** - A serverless application built with AWS Lambda and React that analyzes AWS Cost Explorer data using AWS Bedrock. This sample demonstrates serverless architecture patterns, integration with AWS services, cost data caching with DynamoDB, and AI-powered cost analysis with historical tracking capabilities.
 
 ## License
 
