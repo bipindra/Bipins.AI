@@ -12,7 +12,7 @@
     <NoWarn>$(NoWarn);1591</NoWarn>
     
     <!-- NuGet Package Metadata -->
-    <Version>1.0.3</Version>
+    <Version>1.0.4</Version>
     <Authors>Bipins.AI</Authors>
     <Company>Bipins.AI</Company>
     <Product>Bipins.AI</Product>
