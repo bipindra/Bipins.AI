@@ -1,6 +1,6 @@
 # Bipins.AI
 
-Enterprise AI platform for building intelligent applications with RAG (Retrieval-Augmented Generation), multiple LLM providers, and vector databases.
+Enterprise AI platform for building intelligent applications with RAG (Retrieval-Augmented Generation), multiple LLM providers, vector databases, and Agentic AI capabilities.
 
 [![NuGet](https://img.shields.io/nuget/v/Bipins.AI.svg)](https://www.nuget.org/packages/Bipins.AI)
 [![.NET](https://img.shields.io/badge/.NET-Standard%202.1%20%7C%207.0%20%7C%208.0%20%7C%209.0%20%7C%2010.0-purple.svg)](https://dotnet.microsoft.com/download)
@@ -235,6 +235,84 @@ var result = await ingestionPipeline.ProcessAsync(
 Console.WriteLine($"Chunks indexed: {result.ChunksIndexed}");
 ```
 
+### Agentic AI
+
+```csharp
+using Bipins.AI.Agents;
+using Bipins.AI.Agents.Tools;
+
+// Register agent support
+services
+    .AddBipinsAI()
+    .AddOpenAI(o => { /* ... */ })
+    .AddBipinsAIAgents()
+    .AddCalculatorTool()
+    .AddVectorSearchTool("documents")
+    .AddAgent("assistant", options =>
+    {
+        options.Name = "AI Assistant";
+        options.SystemPrompt = "You are a helpful AI assistant that can use tools to help users.";
+        options.EnablePlanning = true;
+        options.EnableMemory = true;
+        options.MaxIterations = 10;
+        options.Temperature = 0.7f;
+    });
+
+// Use an agent
+var agentRegistry = serviceProvider.GetRequiredService<IAgentRegistry>();
+var agent = agentRegistry.GetAgent("assistant");
+
+var request = new AgentRequest(
+    Goal: "Calculate 15 * 23 and then search for information about machine learning",
+    Context: "User wants mathematical calculation and research",
+    SessionId: "session-123");
+
+var response = await agent.ExecuteAsync(request);
+Console.WriteLine($"Response: {response.Content}");
+Console.WriteLine($"Status: {response.Status}");
+Console.WriteLine($"Iterations: {response.Iterations}");
+
+// Streaming agent execution
+await foreach (var chunk in agent.ExecuteStreamAsync(request))
+{
+    Console.Write(chunk.Content);
+    if (chunk.IsComplete)
+    {
+        Console.WriteLine($"\nStatus: {chunk.Status}");
+    }
+}
+
+// Custom tools
+public class WeatherTool : IToolExecutor
+{
+    public string Name => "get_weather";
+    public string Description => "Gets the current weather for a location";
+    public JsonElement ParametersSchema => JsonSerializer.SerializeToElement(new
+    {
+        type = "object",
+        properties = new
+        {
+            location = new { type = "string", description = "City name" }
+        },
+        required = new[] { "location" }
+    });
+
+    public async Task<ToolExecutionResult> ExecuteAsync(ToolCall toolCall, CancellationToken cancellationToken)
+    {
+        var location = toolCall.Arguments.GetProperty("location").GetString();
+        // Implement weather API call
+        var weather = await GetWeatherAsync(location);
+        return new ToolExecutionResult(Success: true, Result: weather);
+    }
+}
+
+// Register custom tool
+services
+    .AddBipinsAI()
+    .AddBipinsAIAgents()
+    .AddTool(new WeatherTool());
+```
+
 ### ILLMProvider Interface
 
 ```csharp
@@ -437,6 +515,35 @@ services
 - `ILLMProvider`: Unified provider interface
 - `IChatService`, `ChatService`: High-level chat API
 - Provider-specific options and exceptions
+
+### Agents (`Bipins.AI.Agents`)
+
+- `IAgent`: Core agent interface for autonomous agent execution
+- `AgentRequest`, `AgentResponse`, `AgentResponseChunk`: Agent request/response models
+- `AgentOptions`, `AgentCapabilities` (enum), `AgentStatus` (enum): Agent configuration
+- `AgentExecutionPlan`, `PlanStep`: Planning structures
+- `IAgentRegistry`, `DefaultAgentRegistry`: Agent registration and discovery
+- `BaseAgent`, `DefaultAgent`: Agent implementations
+
+### Agent Tools (`Bipins.AI.Agents.Tools`)
+
+- `IToolExecutor`: Interface for tool implementations
+- `IToolRegistry`, `DefaultToolRegistry`: Tool registration and discovery
+- `ToolExecutionResult`: Tool execution result model
+- Built-in tools: `CalculatorTool`, `VectorSearchTool`
+
+### Agent Memory (`Bipins.AI.Agents.Memory`)
+
+- `IAgentMemory`: Interface for conversation memory
+- `InMemoryAgentMemory`: In-memory implementation
+- `VectorStoreAgentMemory`: Vector store-based memory with semantic search
+- `AgentMemoryContext`, `AgentMemoryEntry`: Memory context models
+
+### Agent Planning (`Bipins.AI.Agents.Planning`)
+
+- `IAgentPlanner`: Interface for execution planning
+- `LLMPlanner`: LLM-based planner using structured output
+- `NoOpPlanner`: Simple fallback planner
 
 ### Utilities
 
