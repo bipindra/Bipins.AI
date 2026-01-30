@@ -27,6 +27,7 @@ dotnet add package Bipins.AI
 - **Cost Tracking**: Token usage and cost calculation across providers
 - **Caching**: Distributed cache support via `IDistributedCache`
 - **Observability**: OpenTelemetry integration for distributed tracing
+- **Agentic AI**: Autonomous agents with tool execution, planning, and memory
 
 The library includes comprehensive sample applications demonstrating RAG workflows, cost optimization analysis, and serverless architectures. See the [Samples](#samples) section for details.
 
@@ -103,24 +104,23 @@ await foreach (var chunk in streamingModel.GenerateStreamAsync(request))
 ### Function Calling / Tools
 
 ```csharp
+using System.Text.Json;
+
 var tools = new List<ToolDefinition>
 {
     new ToolDefinition(
-        Type: "function",
-        Function: new FunctionDefinition(
-            Name: "get_weather",
-            Description: "Get the current weather in a given location",
-            Parameters: new
+        Name: "get_weather",
+        Description: "Get the current weather in a given location",
+        Parameters: JsonSerializer.SerializeToElement(new
+        {
+            type = "object",
+            properties = new
             {
-                type = "object",
-                properties = new
-                {
-                    location = new { type = "string", description = "The city and state, e.g. San Francisco, CA" },
-                    unit = new { type = "string", @enum = new[] { "celsius", "fahrenheit" } }
-                },
-                required = new[] { "location" }
-            }
-        )
+                location = new { type = "string", description = "The city and state, e.g. San Francisco, CA" },
+                unit = new { type = "string", @enum = new[] { "celsius", "fahrenheit" } }
+            },
+            required = new[] { "location" }
+        })
     )
 };
 
@@ -134,8 +134,8 @@ if (response.ToolCalls != null && response.ToolCalls.Count > 0)
 {
     foreach (var toolCall in response.ToolCalls)
     {
-        Console.WriteLine($"Tool: {toolCall.Function.Name}");
-        Console.WriteLine($"Arguments: {toolCall.Function.Arguments}");
+        Console.WriteLine($"Tool: {toolCall.Name}");
+        Console.WriteLine($"Arguments: {toolCall.Arguments}");
     }
 }
 ```
@@ -146,11 +146,11 @@ if (response.ToolCalls != null && response.ToolCalls.Count > 0)
 var embeddingModel = serviceProvider.GetRequiredService<IEmbeddingModel>();
 
 var embeddingRequest = new EmbeddingRequest(
-    Input: "Your text to embed",
+    Inputs: new[] { "Your text to embed" },
     ModelId: "text-embedding-3-small");
 
 var embedding = await embeddingModel.EmbedAsync(embeddingRequest);
-Console.WriteLine($"Embedding dimension: {embedding.Data[0].Embedding.Length}");
+Console.WriteLine($"Embedding dimension: {embedding.Vectors[0].Length}");
 ```
 
 ### Document Ingestion
@@ -226,15 +226,97 @@ var queryRequest = new VectorQueryRequest(
     TenantId: "tenant1",
     CollectionName: "documents",
     Filter: new VectorFilterBuilder()
-        .And("source", FilterOperator.Equal, "test")
+        .Equal("source", "test")
         .Build());
 
 var results = await vectorStore.QueryAsync(queryRequest);
 
 foreach (var match in results.Matches)
 {
-    Console.WriteLine($"ID: {match.Id}, Score: {match.Score}, Text: {match.Text}");
+    Console.WriteLine($"ID: {match.Record.Id}, Score: {match.Score}, Text: {match.Record.Text}");
 }
+```
+
+### Agentic AI
+
+```csharp
+using Bipins.AI.Agents;
+using Bipins.AI.Agents.Tools;
+
+// Register agent support
+services
+    .AddBipinsAI()
+    .AddOpenAI(o => { /* ... */ })
+    .AddBipinsAIAgents()
+    .AddCalculatorTool()
+    .AddVectorSearchTool("documents")
+    .AddAgent("assistant", options =>
+    {
+        options.Name = "AI Assistant";
+        options.SystemPrompt = "You are a helpful AI assistant that can use tools to help users.";
+        options.EnablePlanning = true;
+        options.EnableMemory = true;
+        options.MaxIterations = 10;
+        options.Temperature = 0.7f;
+    });
+
+// Use an agent
+var agentRegistry = serviceProvider.GetRequiredService<IAgentRegistry>();
+var agent = agentRegistry.GetAgent("assistant");
+
+var request = new AgentRequest(
+    Goal: "Calculate 15 * 23 and then search for information about machine learning",
+    Context: "User wants mathematical calculation and research",
+    SessionId: "session-123");
+
+var response = await agent.ExecuteAsync(request);
+Console.WriteLine($"Response: {response.Content}");
+Console.WriteLine($"Status: {response.Status}");
+Console.WriteLine($"Iterations: {response.Iterations}");
+
+// Streaming agent execution
+await foreach (var chunk in agent.ExecuteStreamAsync(request))
+{
+    Console.Write(chunk.Content);
+    if (chunk.IsComplete)
+    {
+        Console.WriteLine($"\nStatus: {chunk.Status}");
+    }
+}
+```
+
+### Custom Tools
+
+```csharp
+// Implement a custom tool
+public class WeatherTool : IToolExecutor
+{
+    public string Name => "get_weather";
+    public string Description => "Gets the current weather for a location";
+    public JsonElement ParametersSchema => JsonSerializer.SerializeToElement(new
+    {
+        type = "object",
+        properties = new
+        {
+            location = new { type = "string", description = "City name" }
+        },
+        required = new[] { "location" }
+    });
+
+    public async Task<ToolExecutionResult> ExecuteAsync(ToolCall toolCall, CancellationToken cancellationToken)
+    {
+        var location = toolCall.Arguments.GetProperty("location").GetString();
+        // Implement weather API call
+        var weather = await GetWeatherAsync(location);
+        return new ToolExecutionResult(Success: true, Result: weather);
+    }
+}
+
+// Register custom tool
+services
+    .AddBipinsAI()
+    .AddBipinsAIAgents()
+    .AddTool(new WeatherTool());
 ```
 
 ## Supported Providers
@@ -343,6 +425,47 @@ services
 // - IAiPolicyProvider: Policy management
 ```
 
+### Agent Configuration
+
+```csharp
+// Basic agent setup
+services
+    .AddBipinsAI()
+    .AddOpenAI(o => { /* ... */ })
+    .AddBipinsAIAgents()
+    .AddAgent("assistant", options =>
+    {
+        options.Name = "AI Assistant";
+        options.SystemPrompt = "You are a helpful assistant.";
+        options.EnablePlanning = true;
+        options.EnableMemory = true;
+        options.MaxIterations = 10;
+        options.Temperature = 0.7f;
+    });
+
+// Use vector store for agent memory
+services
+    .AddBipinsAI()
+    .AddQdrant(o => { /* ... */ })
+    .AddBipinsAIAgents()
+    .UseVectorStoreMemory("agent_memory")
+    .AddAgent("assistant", options => { /* ... */ });
+
+// Register built-in tools
+services
+    .AddBipinsAI()
+    .AddBipinsAIAgents()
+    .AddCalculatorTool()
+    .AddVectorSearchTool("documents");
+
+// Available agent services:
+// - IAgent: Individual agent instances
+// - IAgentRegistry: Agent registry for discovery
+// - IToolRegistry: Tool registry
+// - IAgentMemory: Agent memory (default: InMemoryAgentMemory)
+// - IAgentPlanner: Agent planner (default: LLMPlanner)
+```
+
 ## Core Types
 
 ### Models (`Bipins.AI.Core.Models`)
@@ -380,6 +503,35 @@ services
 - `IChatService`, `ChatService`: High-level chat API
 - `IChatModel`, `IChatModelStreaming`: Chat model interfaces
 - `IEmbeddingModel`: Embedding model interface
+
+### Agents (`Bipins.AI.Agents`)
+
+- `IAgent`: Core agent interface
+- `AgentRequest`, `AgentResponse`, `AgentResponseChunk`
+- `AgentOptions`, `AgentCapabilities` (enum), `AgentStatus` (enum)
+- `AgentExecutionPlan`, `PlanStep`
+- `IAgentRegistry`, `DefaultAgentRegistry`
+- `BaseAgent`, `DefaultAgent`: Agent implementations
+
+### Agent Tools (`Bipins.AI.Agents.Tools`)
+
+- `IToolExecutor`: Interface for tool implementations
+- `IToolRegistry`, `DefaultToolRegistry`: Tool registration and discovery
+- `ToolExecutionResult`
+- Built-in tools: `CalculatorTool`, `VectorSearchTool`
+
+### Agent Memory (`Bipins.AI.Agents.Memory`)
+
+- `IAgentMemory`: Interface for conversation memory
+- `InMemoryAgentMemory`: In-memory implementation
+- `VectorStoreAgentMemory`: Vector store-based memory with semantic search
+- `AgentMemoryContext`, `AgentMemoryEntry`
+
+### Agent Planning (`Bipins.AI.Agents.Planning`)
+
+- `IAgentPlanner`: Interface for execution planning
+- `LLMPlanner`: LLM-based planner using structured output
+- `NoOpPlanner`: Simple fallback planner
 
 ### Utilities
 
