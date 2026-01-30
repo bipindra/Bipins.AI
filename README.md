@@ -1,252 +1,157 @@
-# Bipins.AI - AI Integration Framework
+# Bipins.AI
 
-A reusable C#/.NET AI Integration Framework that supports multiple LLM providers and vector databases with a clean, plugin-based architecture.
+Enterprise AI platform for building intelligent applications with RAG (Retrieval-Augmented Generation), multiple LLM providers, and vector databases.
+
+[![NuGet](https://img.shields.io/nuget/v/Bipins.AI.svg)](https://www.nuget.org/packages/Bipins.AI)
+[![.NET](https://img.shields.io/badge/.NET-Standard%202.1%20%7C%207.0%20%7C%208.0%20%7C%209.0%20%7C%2010.0-purple.svg)](https://dotnet.microsoft.com/download)
+
+## Installation
+
+```bash
+dotnet add package Bipins.AI
+```
 
 ## Features
 
-- **Multi-Provider Support**: Works with any LLM API (OpenAI, Azure OpenAI, Bedrock, Anthropic, etc.)
-- **Vector Database Agnostic**: Supports any vector DB (Qdrant, OpenSearch, pgvector, Pinecone, etc.)
-- **Generic Data Envelopes**: Standardized input/output format for all operations
-- **Configurable Execution**: Pipelines, steps, policies, routing, retries, caching, observability
-- **Pluggable Components**: Easy to add new providers and extend functionality
-- **RAG Support**: Built-in retrieval-augmented generation with citations
-- **OpenTelemetry**: Distributed tracing for all operations
-
-## Architecture
-
-```mermaid
-graph TB
-    subgraph Core["Bipins.AI.Core"]
-        Contracts[Contracts & Models]
-        Envelopes[Input/Output Envelopes]
-    end
-    
-    subgraph Runtime["Bipins.AI.Runtime"]
-        Pipeline[Pipeline Runner]
-        Router[Model Router]
-        Policy[Policy Provider]
-        Cache[Cache Interface]
-    end
-    
-    subgraph Providers["Bipins.AI.Providers"]
-        OpenAI[OpenAI Provider]
-        Anthropic[Anthropic Provider]
-        AzureOpenAI[Azure OpenAI Provider]
-        Bedrock[Bedrock Provider]
-    end
-    
-    subgraph Vectors["Bipins.AI.Vectors"]
-        Qdrant[Qdrant Vector Store]
-        Pinecone[Pinecone Vector Store]
-        Weaviate[Weaviate Vector Store]
-        Milvus[Milvus Vector Store]
-    end
-    
-    subgraph Ingestion["Bipins.AI.Ingestion"]
-        Loader[Document Loader]
-        Chunker[Text Chunker]
-        Indexer[Indexer]
-    end
-    
-    subgraph API["Bipins.AI.Api"]
-        Endpoints[Minimal API Endpoints]
-    end
-    
-    Core --> Runtime
-    Core --> Providers
-    Core --> Vectors
-    Core --> Ingestion
-    Runtime --> Providers
-    Runtime --> Vectors
-    Ingestion --> Providers
-    Ingestion --> Vectors
-    API --> Runtime
-    API --> Ingestion
-```
+- **Multi-Provider LLM Support**: OpenAI, Azure OpenAI, Anthropic Claude, AWS Bedrock
+- **Vector Database Integration**: Qdrant, Pinecone, Weaviate, Milvus
+- **RAG (Retrieval-Augmented Generation)**: Built-in document ingestion, chunking, retrieval, and composition
+- **Streaming Support**: Async enumerable streaming for chat completions
+- **Function Calling / Tools**: Native support for tool definitions and tool calls
+- **Structured Output**: JSON schema validation and parsing
+- **Multi-Tenant Isolation**: Tenant-based data isolation and quota management
+- **Document Versioning**: Support for document versioning and update modes
+- **Chunking Strategies**: Fixed-size, sentence-aware, paragraph, and markdown-aware chunking
+- **Metadata Filtering**: Advanced vector query filtering with predicate builders
+- **Rate Limiting & Throttling**: Built-in rate limiting and throttling policies
+- **Cost Tracking**: Token usage and cost calculation across providers
+- **Caching**: Distributed cache support via `IDistributedCache`
+- **Observability**: OpenTelemetry integration for distributed tracing
 
 ## Quick Start
-
-### Prerequisites
-
-- .NET 8 SDK
-- Docker (for Qdrant)
-- OpenAI API key (optional, for LLM features)
-
-### 1. Start Qdrant
-
-```bash
-cd deploy
-docker-compose up -d qdrant
-```
-
-### 2. Configure Environment Variables
-
-```bash
-export OPENAI_API_KEY=your-api-key-here
-export QDRANT_ENDPOINT=http://localhost:6333
-```
-
-Or create an `appsettings.json`:
-
-```json
-{
-  "OpenAI": {
-    "ApiKey": "your-api-key-here"
-  },
-  "Qdrant": {
-    "Endpoint": "http://localhost:6333",
-    "CollectionName": "default",
-    "VectorSize": "1536"
-  }
-}
-```
-
-### 3. Run the Sample
-
-```bash
-cd src/Bipins.AI.Samples
-dotnet run
-```
-
-This will:
-1. Ingest a sample markdown file
-2. Query with RAG
-3. Display the response with citations and telemetry
-
-### 4. Run the API
-
-```bash
-cd src/Bipins.AI.Api
-dotnet run
-```
-
-The API will be available at `http://localhost:5000` with Swagger UI at `/swagger`.
-
-## API Endpoints
-
-### POST /v1/ingest/text
-
-Ingest text content into the vector store.
-
-**Request:**
-```json
-{
-  "tenantId": "tenant1",
-  "docId": "doc1",
-  "text": "Your text content here..."
-}
-```
-
-**Response:**
-```json
-{
-  "status": "Success",
-  "resultType": "ingest",
-  "data": {
-    "chunksIndexed": 5,
-    "vectorsCreated": 5
-  }
-}
-```
-
-### POST /v1/chat
-
-Chat with RAG support.
-
-**Request:**
-```json
-{
-  "tenantId": "tenant1",
-  "correlationId": "corr1",
-  "inputType": "chat",
-  "payload": {
-    "messages": [
-      {
-        "role": "User",
-        "content": "What is machine learning?"
-      }
-    ]
-  }
-}
-```
-
-**Response:**
-```json
-{
-  "status": "Success",
-  "resultType": "chat",
-  "data": {
-    "content": "Machine learning is...",
-    "modelId": "gpt-3.5-turbo",
-    "usage": {
-      "promptTokens": 100,
-      "completionTokens": 50,
-      "totalTokens": 150
-    }
-  },
-  "citations": [
-    {
-      "sourceUri": "doc1",
-      "docId": "doc1",
-      "chunkId": "chunk_0",
-      "text": "Machine learning is...",
-      "score": 0.95
-    }
-  ],
-  "telemetry": {
-    "modelId": "gpt-3.5-turbo",
-    "tokensUsed": 150,
-    "latencyMs": 1200,
-    "providerName": "OpenAI"
-  }
-}
-```
-
-### POST /v1/query
-
-Query the vector store directly.
-
-**Request:**
-```json
-{
-  "query": "machine learning",
-  "topK": 5
-}
-```
-
-## Usage
 
 ### Basic Setup
 
 ```csharp
-using Bipins.AI.Core;
-using Bipins.AI.Providers.OpenAI;
-using Bipins.AI.Vectors.Qdrant;
-using Bipins.AI.Ingestion;
-using Bipins.AI.Runtime;
-using Bipins.AI.Runtime.Rag;
+using Bipins.AI;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 
-var services = new ServiceCollection();
+var builder = Host.CreateDefaultBuilder(args);
 
-services
-    .AddBipinsAI()
-    .AddBipinsAIRuntime()
-    .AddBipinsAIIngestion()
-    .AddBipinsAIRag()
-    .AddOpenAI(o =>
-    {
-        o.ApiKey = "your-api-key";
-        o.DefaultChatModelId = "gpt-3.5-turbo";
-    })
-    .AddQdrant(o =>
-    {
-        o.Endpoint = "http://localhost:6333";
-        o.DefaultCollectionName = "default";
-        o.VectorSize = 1536;
-    });
+builder.ConfigureServices((context, services) =>
+{
+    services
+        .AddBipinsAI()
+        .AddOpenAI(o =>
+        {
+            o.ApiKey = context.Configuration["OpenAI:ApiKey"] 
+                      ?? Environment.GetEnvironmentVariable("OPENAI_API_KEY");
+            o.DefaultChatModelId = "gpt-4";
+            o.DefaultEmbeddingModelId = "text-embedding-3-small";
+        })
+        .AddBipinsAIRuntime(context.Configuration)
+        .AddBipinsAIIngestion()
+        .AddBipinsAIRag()
+        .AddQdrant(o =>
+        {
+            o.Endpoint = context.Configuration["Qdrant:Endpoint"] 
+                        ?? Environment.GetEnvironmentVariable("QDRANT_ENDPOINT") 
+                        ?? "http://localhost:6333";
+            o.DefaultCollectionName = "documents";
+            o.VectorSize = 1536;
+            o.CreateCollectionIfMissing = true;
+        });
+});
+
+var host = builder.Build();
 ```
 
-### Ingest a Document
+### Chat Completion
+
+```csharp
+using Bipins.AI.Core.Models;
+
+var chatModel = serviceProvider.GetRequiredService<IChatModel>();
+
+var request = new ChatRequest(
+    Messages: new[]
+    {
+        new Message(MessageRole.System, "You are a helpful assistant."),
+        new Message(MessageRole.User, "What is machine learning?")
+    },
+    Temperature: 0.7f,
+    MaxTokens: 1000);
+
+var response = await chatModel.GenerateAsync(request);
+Console.WriteLine(response.Content);
+```
+
+### Streaming
+
+```csharp
+var streamingModel = serviceProvider.GetRequiredService<IChatModelStreaming>();
+
+await foreach (var chunk in streamingModel.GenerateStreamAsync(request))
+{
+    Console.Write(chunk.Content);
+}
+```
+
+### Function Calling / Tools
+
+```csharp
+var tools = new List<ToolDefinition>
+{
+    new ToolDefinition(
+        Type: "function",
+        Function: new FunctionDefinition(
+            Name: "get_weather",
+            Description: "Get the current weather in a given location",
+            Parameters: new
+            {
+                type = "object",
+                properties = new
+                {
+                    location = new { type = "string", description = "The city and state, e.g. San Francisco, CA" },
+                    unit = new { type = "string", @enum = new[] { "celsius", "fahrenheit" } }
+                },
+                required = new[] { "location" }
+            }
+        )
+    )
+};
+
+var request = new ChatRequest(
+    Messages: new[] { new Message(MessageRole.User, "What's the weather in San Francisco?") },
+    Tools: tools);
+
+var response = await chatModel.GenerateAsync(request);
+
+if (response.ToolCalls != null && response.ToolCalls.Count > 0)
+{
+    foreach (var toolCall in response.ToolCalls)
+    {
+        Console.WriteLine($"Tool: {toolCall.Function.Name}");
+        Console.WriteLine($"Arguments: {toolCall.Function.Arguments}");
+    }
+}
+```
+
+### Embeddings
+
+```csharp
+var embeddingModel = serviceProvider.GetRequiredService<IEmbeddingModel>();
+
+var embeddingRequest = new EmbeddingRequest(
+    Input: "Your text to embed",
+    ModelId: "text-embedding-3-small");
+
+var embedding = await embeddingModel.EmbedAsync(embeddingRequest);
+Console.WriteLine($"Embedding dimension: {embedding.Data[0].Embedding.Length}");
+```
+
+### Document Ingestion
 
 ```csharp
 var pipeline = serviceProvider.GetRequiredService<IngestionPipeline>();
@@ -254,185 +159,236 @@ var pipeline = serviceProvider.GetRequiredService<IngestionPipeline>();
 var options = new IndexOptions(
     tenantId: "tenant1",
     docId: "doc1",
-    versionId: null,
-    collectionName: null);
+    versionId: "v1.0.0",
+    collectionName: "documents",
+    chunkStrategy: ChunkStrategy.FixedSize,
+    chunkOptions: new ChunkOptions(
+        maxChunkSize: 1000,
+        overlap: 200));
 
 var result = await pipeline.IngestAsync("path/to/document.md", options);
+Console.WriteLine($"Indexed {result.ChunksIndexed} chunks");
 ```
 
-### Query with RAG
+### RAG (Retrieval-Augmented Generation)
 
 ```csharp
 var retriever = serviceProvider.GetRequiredService<IRetriever>();
 var composer = serviceProvider.GetRequiredService<IRagComposer>();
-var router = serviceProvider.GetRequiredService<IModelRouter>();
+var chatModel = serviceProvider.GetRequiredService<IChatModel>();
 
 // Retrieve relevant chunks
-var retrieveRequest = new RetrieveRequest("your query", "tenant1", topK: 5);
+var retrieveRequest = new RetrieveRequest(
+    query: "What is machine learning?",
+    tenantId: "tenant1",
+    topK: 5);
+
 var retrieved = await retriever.RetrieveAsync(retrieveRequest);
 
 // Compose augmented request
-var chatRequest = new ChatRequest(new[]
-{
-    new Message(MessageRole.User, "your query")
-});
+var chatRequest = new ChatRequest(
+    Messages: new[] { new Message(MessageRole.User, "What is machine learning?") });
 
 var augmentedRequest = composer.Compose(chatRequest, retrieved);
 
 // Generate response
-var chatModel = await router.SelectChatModelAsync("tenant1", augmentedRequest);
 var response = await chatModel.GenerateAsync(augmentedRequest);
+Console.WriteLine(response.Content);
 ```
 
-## Adding a New Provider
-
-### Adding a New LLM Provider
-
-1. Create a new project: `Bipins.AI.Providers.YourProvider`
-
-2. Implement `IChatModel`:
+### Vector Store Operations
 
 ```csharp
-public class YourChatModel : IChatModel
-{
-    public async Task<ChatResponse> GenerateAsync(
-        ChatRequest request,
-        CancellationToken cancellationToken = default)
+var vectorStore = serviceProvider.GetRequiredService<IVectorStore>();
+
+// Upsert vectors
+var upsertRequest = new VectorUpsertRequest(
+    Records: new[]
     {
-        // Your implementation
-    }
+        new VectorRecord(
+            Id: "doc1",
+            Vector: new ReadOnlyMemory<float>(new float[] { 0.1f, 0.2f, 0.3f }),
+            Text: "Sample document text",
+            Metadata: new Dictionary<string, object> { ["source"] = "test" },
+            TenantId: "tenant1",
+            VersionId: "v1")
+    },
+    CollectionName: "documents");
+
+await vectorStore.UpsertAsync(upsertRequest);
+
+// Query vectors
+var queryRequest = new VectorQueryRequest(
+    QueryVector: new ReadOnlyMemory<float>(new float[] { 0.1f, 0.2f, 0.3f }),
+    TopK: 5,
+    TenantId: "tenant1",
+    CollectionName: "documents",
+    Filter: new VectorFilterBuilder()
+        .And("source", FilterOperator.Equal, "test")
+        .Build());
+
+var results = await vectorStore.QueryAsync(queryRequest);
+
+foreach (var match in results.Matches)
+{
+    Console.WriteLine($"ID: {match.Id}, Score: {match.Score}, Text: {match.Text}");
 }
 ```
 
-3. Implement `IEmbeddingModel` (if supported):
+## Supported Providers
 
-```csharp
-public class YourEmbeddingModel : IEmbeddingModel
-{
-    public async Task<EmbeddingResponse> EmbedAsync(
-        EmbeddingRequest request,
-        CancellationToken cancellationToken = default)
-    {
-        // Your implementation
-    }
-}
-```
+### LLM Providers
 
-4. Create extension method:
+- **OpenAI**: GPT-3.5, GPT-4, GPT-4 Turbo, and embedding models
+- **Azure OpenAI**: Full compatibility with Azure-hosted OpenAI models
+- **Anthropic**: Claude 3 (Opus, Sonnet, Haiku) and streaming support
+- **AWS Bedrock**: Amazon Bedrock models (Claude, Llama, Titan)
 
-```csharp
-public static class YourServiceCollectionExtensions
-{
-    public static IBipinsAIBuilder AddYourProvider(
-        this IBipinsAIBuilder builder,
-        Action<YourOptions> configure)
-    {
-        builder.Services.Configure(configure);
-        builder.Services.AddSingleton<IChatModel, YourChatModel>();
-        return builder;
-    }
-}
-```
+### Vector Stores
 
-### Adding a New Vector Database Provider
-
-1. Create a new project: `Bipins.AI.Vectors.YourProvider`
-
-2. Implement `IVectorStore`:
-
-```csharp
-public class YourVectorStore : IVectorStore
-{
-    public async Task UpsertAsync(
-        VectorUpsertRequest request,
-        CancellationToken cancellationToken = default)
-    {
-        // Your implementation
-    }
-
-    public async Task<VectorQueryResponse> QueryAsync(
-        VectorQueryRequest request,
-        CancellationToken cancellationToken = default)
-    {
-        // Your implementation
-    }
-
-    public async Task DeleteAsync(
-        VectorDeleteRequest request,
-        CancellationToken cancellationToken = default)
-    {
-        // Your implementation
-    }
-}
-```
-
-3. Implement filter translation if needed (translate `VectorFilter` to your provider's format)
-
-4. Create extension method similar to the LLM provider
-
-## Project Structure
-
-```
-Bipins.AI/
-├── src/
-│   ├── Bipins.AI.Core/              # Core contracts and models
-│   ├── Bipins.AI.Runtime/           # Pipeline execution system
-│   ├── Bipins.AI.Ingestion/         # Document ingestion pipeline
-│   ├── Bipins.AI.Providers/         # LLM provider implementations
-│   │   ├── Bipins.AI.Providers.OpenAI/
-│   │   ├── Bipins.AI.Providers.Anthropic/
-│   │   ├── Bipins.AI.Providers.AzureOpenAI/
-│   │   └── Bipins.AI.Providers.Bedrock/
-│   ├── Bipins.AI.Vectors/           # Vector store implementations
-│   │   ├── Bipins.AI.Vectors.Qdrant/
-│   │   ├── Bipins.AI.Vectors.Pinecone/
-│   │   ├── Bipins.AI.Vectors.Weaviate/
-│   │   ├── Bipins.AI.Vectors.Milvus/
-│   │   ├── Bipins.AI.Vectors.PgVector/
-│   │   └── Bipins.AI.Vectors.OpenSearch/
-│   ├── Bipins.AI.Api/               # ASP.NET Core Minimal API
-│   ├── Bipins.AI.Worker/            # BackgroundService worker
-│   └── Bipins.AI.Samples/            # Console sample app
-├── tests/
-│   ├── Bipins.AI.UnitTests/
-│   ├── Bipins.AI.IntegrationTests/
-│   └── Bipins.AI.Benchmarks/
-├── deploy/
-│   └── docker-compose.yml
-└── docs/
-    └── pipelines/
-        └── chat-rag.json
-```
-
-## Testing
-
-### Unit Tests
-
-```bash
-dotnet test tests/Bipins.AI.UnitTests
-```
-
-### Integration Tests
-
-```bash
-# Start Qdrant first
-cd deploy && docker-compose up -d qdrant
-
-# Run tests
-dotnet test tests/Bipins.AI.IntegrationTests
-```
+- **Qdrant**: Self-hosted or cloud Qdrant instances
+- **Pinecone**: Pinecone cloud vector database
+- **Weaviate**: Weaviate open-source vector database
+- **Milvus**: Milvus vector database
 
 ## Configuration
 
-### Environment Variables
+### Provider Configuration
 
-- `OPENAI_API_KEY`: OpenAI API key
-- `QDRANT_ENDPOINT`: Qdrant endpoint (default: http://localhost:6333)
-- `QDRANT_API_KEY`: Optional Qdrant API key
+```csharp
+// OpenAI
+services.AddBipinsAI().AddOpenAI(o =>
+{
+    o.ApiKey = "your-api-key";
+    o.DefaultChatModelId = "gpt-4";
+    o.DefaultEmbeddingModelId = "text-embedding-3-small";
+});
 
-### appsettings.json
+// Azure OpenAI
+services.AddBipinsAI().AddAzureOpenAI(o =>
+{
+    o.Endpoint = "https://your-resource.openai.azure.com";
+    o.ApiKey = "your-api-key";
+    o.DeploymentName = "gpt-4";
+    o.EmbeddingDeploymentName = "text-embedding-3-small";
+});
 
-See `src/Bipins.AI.Samples/appsettings.json` for an example configuration.
+// Anthropic
+services.AddBipinsAI().AddAnthropic(o =>
+{
+    o.ApiKey = "your-api-key";
+    o.DefaultModelId = "claude-3-opus-20240229";
+});
+
+// AWS Bedrock
+services.AddBipinsAI().AddBedrock(o =>
+{
+    o.Region = "us-east-1";
+    o.DefaultModelId = "anthropic.claude-3-opus-20240229-v1:0";
+});
+```
+
+### Vector Store Configuration
+
+```csharp
+// Qdrant
+services.AddBipinsAI().AddQdrant(o =>
+{
+    o.Endpoint = "http://localhost:6333";
+    o.DefaultCollectionName = "documents";
+    o.VectorSize = 1536;
+    o.CreateCollectionIfMissing = true;
+});
+
+// Pinecone
+services.AddBipinsAI().AddPinecone(o =>
+{
+    o.ApiKey = "your-api-key";
+    o.Environment = "us-west1-gcp";
+    o.IndexName = "documents";
+});
+
+// Weaviate
+services.AddBipinsAI().AddWeaviate(o =>
+{
+    o.Endpoint = "http://localhost:8080";
+    o.ApiKey = "your-key";
+    o.ClassName = "Document";
+});
+
+// Milvus
+services.AddBipinsAI().AddMilvus(o =>
+{
+    o.Endpoint = "http://localhost:19530";
+    o.CollectionName = "documents";
+    o.VectorSize = 1536;
+});
+```
+
+### Runtime Services
+
+```csharp
+// Requires IDistributedCache to be registered
+services
+    .AddDistributedMemoryCache() // or AddStackExchangeRedisCache(...)
+    .AddBipinsAI()
+    .AddBipinsAIRuntime(configuration);
+
+// Available services:
+// - ICache: Distributed caching wrapper
+// - IRateLimiter: Rate limiting
+// - ICostTracker: Cost tracking
+// - IAiPolicyProvider: Policy management
+```
+
+## Core Types
+
+### Models (`Bipins.AI.Core.Models`)
+
+- `ChatRequest`, `ChatResponse`, `ChatResponseChunk`
+- `Message`, `MessageRole` (enum)
+- `ToolDefinition`, `ToolCall`, `FunctionDefinition`
+- `EmbeddingRequest`, `EmbeddingResponse`
+- `Usage`, `SafetyInfo`
+- `StructuredOutputOptions`
+
+### Vector (`Bipins.AI.Vector`)
+
+- `IVectorStore`, `VectorRecord`, `VectorMatch`
+- `VectorQueryRequest`, `VectorQueryResponse`
+- `VectorUpsertRequest`, `VectorDeleteRequest`
+- `VectorFilter`, `VectorFilterBuilder`
+- `FilterPredicate`, `FilterOperator` (enum)
+
+### Ingestion (`Bipins.AI.Core.Ingestion`)
+
+- `Document`, `Chunk`, `IndexResult`, `IndexOptions`
+- `ChunkOptions`, `ChunkStrategy` (enum), `UpdateMode` (enum)
+- `IDocumentLoader`, `IChunker`, `IIndexer`, `IMetadataEnricher`
+- `IChunkingStrategy`, `IChunkingStrategyFactory`
+
+### RAG (`Bipins.AI.Core.Rag`)
+
+- `RetrieveRequest`, `RetrieveResult`, `RagChunk`
+- `IRetriever`, `IRagComposer`
+
+### Providers (`Bipins.AI.Providers`)
+
+- `ILLMProvider`: Unified provider interface for chat and embeddings
+- `IChatService`, `ChatService`: High-level chat API
+- `IChatModel`, `IChatModelStreaming`: Chat model interfaces
+- `IEmbeddingModel`: Embedding model interface
+
+### Utilities
+
+- `SnakeCaseLowerNamingPolicy`: JSON naming policy for snake_case serialization
+- `StructuredOutputHelper`: Helper for parsing structured JSON responses
+
+## Requirements
+
+- .NET Standard 2.1, .NET 7.0, .NET 8.0, .NET 9.0, or .NET 10.0
+- For vector stores: Qdrant, Pinecone, Weaviate, or Milvus instance
+- For LLM providers: API keys for respective providers
 
 ## License
 
@@ -457,43 +413,3 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-
-## Supported Providers
-
-### LLM Providers
-- ✅ OpenAI (GPT-3.5, GPT-4, etc.)
-- ✅ Anthropic (Claude)
-- ✅ Azure OpenAI
-- ✅ AWS Bedrock
-
-### Vector Stores
-- ✅ Qdrant
-- ✅ Pinecone
-- ✅ Weaviate
-- ✅ Milvus
-- ✅ PgVector (PostgreSQL extension)
-- ✅ OpenSearch
-
-## ToDo
-
-- [ ] Add support for additional LLM providers
-- [ ] Add support for additional vector databases
-- [ ] Implement streaming responses for chat endpoints
-- [x] Add batch ingestion support for multiple documents
-- [x] Implement document versioning and update capabilities
-- [x] Add support for structured output/function calling
-- [x] Implement rate limiting and throttling policies
-- [x] Add comprehensive unit test coverage (228/235 tests passing, 97% pass rate)
-- [ ] Add integration tests for all connectors
-- [x] Implement authentication and authorization improvements
-- [x] Add support for custom chunking strategies
-- [x] Implement metadata filtering enhancements
-- [ ] Add monitoring and alerting capabilities
-- [ ] Create Docker images for API and Worker services
-- [ ] Add Kubernetes deployment manifests
-- [ ] Implement distributed caching support
-- [x] Add support for multi-tenant isolation
-- [x] Create comprehensive API documentation
-- [x] Add performance benchmarking suite
-- [x] Implement cost tracking and reporting
-- [x] Add GitHub Actions CI workflow for automated builds and tests
