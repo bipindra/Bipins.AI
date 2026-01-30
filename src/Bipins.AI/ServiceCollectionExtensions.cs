@@ -26,6 +26,12 @@ using Bipins.AI.Vectors.Qdrant;
 using Bipins.AI.Vectors.Pinecone;
 using Bipins.AI.Vectors.Weaviate;
 using Bipins.AI.Vectors.Milvus;
+using Bipins.AI.Agents;
+using Bipins.AI.Agents.Memory;
+using Bipins.AI.Agents.Planning;
+using Bipins.AI.Agents.Tools;
+using Bipins.AI.Agents.Tools.BuiltIn;
+using Microsoft.Extensions.Logging;
 
 namespace Bipins.AI;
 
@@ -243,6 +249,129 @@ public static class ServiceCollectionExtensions
         builder.Services.AddSingleton<MilvusVectorStore>();
         builder.Services.AddSingleton<IVectorStore>(sp => sp.GetRequiredService<MilvusVectorStore>());
 
+        return builder;
+    }
+
+    /// <summary>
+    /// Adds Bipins.AI Agents support.
+    /// </summary>
+    public static IBipinsAIBuilder AddBipinsAIAgents(this IBipinsAIBuilder builder, Action<AgentOptions>? configureDefault = null)
+    {
+        // Register tool registry - will be populated when tools are registered
+        builder.Services.AddSingleton<IToolRegistry>(sp =>
+        {
+            var registry = new DefaultToolRegistry(sp.GetService<ILogger<DefaultToolRegistry>>());
+            // Register all IToolExecutor instances
+            var tools = sp.GetServices<IToolExecutor>();
+            foreach (var tool in tools)
+            {
+                registry.RegisterTool(tool);
+            }
+            return registry;
+        });
+
+        // Register agent registry
+        builder.Services.AddSingleton<IAgentRegistry>(sp =>
+        {
+            var registry = new DefaultAgentRegistry(sp.GetService<ILogger<DefaultAgentRegistry>>());
+            // Register all IAgent instances
+            var agents = sp.GetServices<IAgent>();
+            foreach (var agent in agents)
+            {
+                registry.RegisterAgent(agent);
+            }
+            return registry;
+        });
+
+        // Register default planner (LLM-based)
+        builder.Services.AddSingleton<IAgentPlanner, LLMPlanner>();
+
+        // Register default memory (in-memory, can be overridden)
+        builder.Services.AddSingleton<IAgentMemory, InMemoryAgentMemory>();
+
+        // Configure default agent options if provided
+        if (configureDefault != null)
+        {
+            builder.Services.Configure(configureDefault);
+        }
+
+        return builder;
+    }
+
+    /// <summary>
+    /// Registers an agent with the specified name and configuration.
+    /// </summary>
+    public static IBipinsAIBuilder AddAgent(this IBipinsAIBuilder builder, string name, Action<AgentOptions> configure)
+    {
+        var agentId = name.ToLowerInvariant().Replace(" ", "-");
+
+        // Configure agent-specific options
+        builder.Services.Configure<AgentOptions>(name, configure);
+
+        // Register the agent instance
+        builder.Services.AddSingleton<IAgent>(sp =>
+        {
+            var optionsSnapshot = sp.GetRequiredService<IOptionsSnapshot<AgentOptions>>();
+            var options = optionsSnapshot.Get(name);
+            options.Name = string.IsNullOrEmpty(options.Name) ? name : options.Name;
+
+            var llmProvider = sp.GetRequiredService<ILLMProvider>();
+            var toolRegistry = sp.GetRequiredService<IToolRegistry>();
+            var memory = sp.GetService<IAgentMemory>();
+            var planner = sp.GetService<IAgentPlanner>();
+            var logger = sp.GetService<ILogger<DefaultAgent>>();
+
+            return new DefaultAgent(agentId, options, llmProvider, toolRegistry, memory, planner, logger);
+        });
+
+        return builder;
+    }
+
+    /// <summary>
+    /// Registers a tool executor.
+    /// </summary>
+    public static IBipinsAIBuilder AddTool(this IBipinsAIBuilder builder, IToolExecutor tool)
+    {
+        builder.Services.AddSingleton(tool);
+        return builder;
+    }
+
+    /// <summary>
+    /// Registers the calculator tool.
+    /// </summary>
+    public static IBipinsAIBuilder AddCalculatorTool(this IBipinsAIBuilder builder)
+    {
+        builder.Services.AddSingleton<IToolExecutor, CalculatorTool>();
+        return builder;
+    }
+
+    /// <summary>
+    /// Registers the vector search tool (requires IVectorStore and IEmbeddingModel).
+    /// </summary>
+    public static IBipinsAIBuilder AddVectorSearchTool(this IBipinsAIBuilder builder, string collectionName = "documents")
+    {
+        builder.Services.AddSingleton<IToolExecutor>(sp =>
+        {
+            var vectorStore = sp.GetRequiredService<IVectorStore>();
+            var embeddingModel = sp.GetRequiredService<IEmbeddingModel>();
+            var logger = sp.GetService<ILogger<VectorSearchTool>>();
+            return new VectorSearchTool(vectorStore, embeddingModel, collectionName, logger);
+        });
+        return builder;
+    }
+
+    /// <summary>
+    /// Configures agent memory to use vector store (requires IVectorStore and IEmbeddingModel).
+    /// </summary>
+    public static IBipinsAIBuilder UseVectorStoreMemory(this IBipinsAIBuilder builder, string collectionName = "agent_memory")
+    {
+        builder.Services.AddSingleton<IAgentMemory>(sp =>
+        {
+            var vectorStore = sp.GetRequiredService<IVectorStore>();
+            var embeddingModel = sp.GetRequiredService<IEmbeddingModel>();
+            var logger = sp.GetService<ILogger<VectorStoreAgentMemory>>();
+            return new VectorStoreAgentMemory(vectorStore, embeddingModel, collectionName, logger);
+        });
         return builder;
     }
 }
