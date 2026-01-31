@@ -3,7 +3,7 @@
   <PropertyGroup>
     <RootNamespace>Bipins.AI</RootNamespace>
     <PackageId>Bipins.AI</PackageId>
-    <Description>Bipins.AI - Enterprise AI platform for building intelligent applications with RAG (Retrieval-Augmented Generation), multiple LLM providers, vector databases, and Agentic AI. Includes Core, Runtime, Ingestion, Providers (OpenAI, Anthropic, Azure OpenAI, Bedrock), Vector integrations (Qdrant, Pinecone, Weaviate, Milvus), and Autonomous Agents with tool execution, planning, and memory.</Description>
+    <Description>Bipins.AI - Enterprise AI platform for building intelligent applications with RAG (Retrieval-Augmented Generation), multiple LLM providers, vector databases, Agentic AI, content moderation, validation, and resilience. Includes Core, Runtime, Ingestion, Providers (OpenAI, Anthropic, Azure OpenAI, Bedrock), Vector integrations (Qdrant, Pinecone, Weaviate, Milvus), Autonomous Agents with tool execution, planning, and memory, Content Moderation with Azure Cognitive Services, FluentValidation and JSON Schema validation, and Polly-based resilience policies.</Description>
     <TargetFramework /> <!-- Clear any inherited TargetFramework -->
     <TargetFrameworks>netstandard2.1;net7.0;net8.0;net9.0;net10.0</TargetFrameworks>
     <ImplicitUsings Condition="'$(TargetFramework)' != 'netstandard2.1'">enable</ImplicitUsings>

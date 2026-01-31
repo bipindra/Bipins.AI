@@ -28,6 +28,9 @@ dotnet add package Bipins.AI
 - **Caching**: Distributed cache support via `IDistributedCache`
 - **Observability**: OpenTelemetry integration for distributed tracing
 - **Agentic AI**: Autonomous agents with tool execution, planning, and memory
+- **Content Moderation**: Built-in content moderation with Azure Cognitive Services support
+- **Validation**: FluentValidation and JSON Schema validation frameworks
+- **Resilience**: Polly-based retry, timeout, circuit breaker, and bulkhead policies
 
 The library includes comprehensive sample applications demonstrating RAG workflows, cost optimization analysis, and serverless architectures. See the [Samples](#samples) section for details.
 
@@ -555,6 +558,8 @@ b) **AICloudCostOptimizationAdvisor** - A web application that analyzes Terrafor
 c) **AICostOptimizationAdvisor** - A serverless application built with AWS Lambda and React that analyzes AWS Cost Explorer data using AWS Bedrock. This sample demonstrates serverless architecture patterns, integration with AWS services, cost data caching with DynamoDB, and AI-powered cost analysis with historical tracking capabilities.
 
 d) **Bipins.AI.AgentSamples** - An interactive console application demonstrating Agentic AI capabilities with autonomous agents. This sample showcases agent execution with multiple tools (calculator, weather, vector search), conversation memory across multiple requests, LLM-based planning for complex multi-step tasks, streaming agent responses, and RAG integration with vector search. The application features a modular architecture with an interactive menu system for selecting and running different scenarios. It demonstrates how agents can autonomously use tools, maintain context across conversations, plan multi-step workflows, and provide real-time streaming responses.
+
+e) **Bipins.AI.Guardian** - A simple MVC web application demonstrating safety, validation, and resilience features. This sample showcases content moderation with automatic detection of unsafe content, FluentValidation for request validation, JSON Schema validation for response structure, and Polly-based resilience policies with retry and timeout handling. The application provides a clean web interface for testing these features with OpenAI chat completions, displaying moderation status, validation results, and retry information.
 
 ## License
 

@@ -313,6 +313,140 @@ services
     .AddTool(new WeatherTool());
 ```
 
+### Content Moderation
+
+```csharp
+using Bipins.AI.Safety;
+using Bipins.AI.Safety.Azure;
+
+// Add content moderation
+services
+    .AddBipinsAI()
+    .AddOpenAI(o => { /* ... */ })
+    .AddContentModeration(options =>
+    {
+        options.Enabled = true;
+        options.MinimumSeverityToBlock = SafetySeverity.High;
+        options.FilterUnsafeContent = false;
+        options.ThrowOnUnsafeContent = false;
+        options.BlockedCategories = new List<SafetyCategory> 
+        { 
+            SafetyCategory.PromptInjection, 
+            SafetyCategory.SelfHarm 
+        };
+    })
+    .AddAzureContentModerator(azureOptions =>
+    {
+        azureOptions.Endpoint = "https://your-region.api.cognitive.microsoft.com";
+        azureOptions.SubscriptionKey = "your-key";
+        azureOptions.DetectPII = true;
+    })
+    .UseContentModerationMiddleware();
+
+// Content moderation is automatically applied to all LLM requests and responses
+var llmProvider = serviceProvider.GetRequiredService<ILLMProvider>();
+var response = await llmProvider.ChatAsync(new ChatRequest(
+    Messages: new[] { new Message(MessageRole.User, "Hello") }));
+
+// Check safety info
+if (response.Safety?.Flagged == true)
+{
+    Console.WriteLine($"Content flagged: {string.Join(", ", response.Safety.Categories?.Keys ?? Array.Empty<string>())}");
+}
+```
+
+### Validation
+
+```csharp
+using Bipins.AI.Validation;
+using Bipins.AI.Validation.FluentValidation;
+using Bipins.AI.Validation.JsonSchema;
+using FluentValidation;
+
+// Add validation framework
+services
+    .AddBipinsAI()
+    .AddValidation()
+    .AddFluentValidation()
+    .AddJsonSchemaValidation();
+
+// FluentValidation for request validation
+public class ChatRequestValidator : AbstractValidator<ChatRequest>
+{
+    public ChatRequestValidator()
+    {
+        RuleFor(x => x.Messages)
+            .NotEmpty()
+            .Must(m => m.Any(msg => msg.Role == MessageRole.User))
+            .WithMessage("At least one user message is required");
+    }
+}
+
+services.AddValidatorsFromAssemblyContaining<ChatRequestValidator>();
+
+// Use request validator
+var requestValidator = serviceProvider.GetRequiredService<IRequestValidator<ChatRequest>>();
+var validationResult = await requestValidator.ValidateAsync(request);
+if (!validationResult.IsValid)
+{
+    foreach (var error in validationResult.Errors)
+    {
+        Console.WriteLine($"{error.PropertyName}: {error.ErrorMessage}");
+    }
+}
+
+// JSON Schema validation for responses
+var responseValidator = serviceProvider.GetRequiredService<IResponseValidator<string>>();
+var schema = @"{
+    ""type"": ""object"",
+    ""properties"": {
+        ""content"": { ""type"": ""string"", ""minLength"": 1 }
+    },
+    ""required"": [""content""]
+}";
+
+var responseJson = JsonSerializer.Serialize(response);
+var validationResult = await responseValidator.ValidateAsync(responseJson, schema);
+```
+
+### Resilience
+
+```csharp
+using Bipins.AI.Resilience;
+
+// Add resilience with Polly
+services
+    .AddBipinsAI()
+    .AddResilience(options =>
+    {
+        options.Retry = new RetryOptions
+        {
+            MaxRetries = 3,
+            Delay = TimeSpan.FromSeconds(1),
+            BackoffStrategy = BackoffStrategy.Exponential,
+            MaxDelay = TimeSpan.FromSeconds(10)
+        };
+        options.Timeout = new TimeoutOptions
+        {
+            Timeout = TimeSpan.FromSeconds(30)
+        };
+        options.Bulkhead = new BulkheadOptions
+        {
+            MaxParallelization = 10,
+            MaxQueuingActions = 5
+        };
+    });
+
+// Use resilience policy
+var resiliencePolicy = serviceProvider.GetRequiredService<IResiliencePolicy>();
+
+var response = await resiliencePolicy.ExecuteAsync(async () =>
+{
+    return await llmProvider.ChatAsync(new ChatRequest(
+        Messages: new[] { new Message(MessageRole.User, "Hello") }));
+});
+```
+
 ### ILLMProvider Interface
 
 ```csharp

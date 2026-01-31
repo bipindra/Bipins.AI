@@ -12,11 +12,11 @@
     <NoWarn>$(NoWarn);1591</NoWarn>
     
     <!-- NuGet Package Metadata -->
-    <Version>1.0.4</Version>
+    <Version>1.0.5</Version>
     <Authors>Bipins.AI</Authors>
     <Company>Bipins.AI</Company>
     <Product>Bipins.AI</Product>
-    <Description>Bipins.AI - Enterprise AI platform for building intelligent applications</Description>
+    <Description>Bipins.AI - Enterprise AI platform for building intelligent applications with RAG, multiple LLM providers, vector databases, Agentic AI, content moderation, validation, and resilience</Description>
     <Copyright>Copyright © Bipins.AI</Copyright>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <RepositoryUrl>https://github.com/bipindra/Bipins.AI</RepositoryUrl>
