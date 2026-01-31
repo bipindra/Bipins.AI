@@ -1,0 +1,112 @@
+﻿@model Bipins.AI.Guardian.Models.ChatRequestModel
+@{
+    ViewData["Title"] = "Guardian - AI Chat with Safety";
+}
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow-lg">
+                <div class="card-header bg-primary text-white">
+                    <h2 class="mb-0">🛡️ Guardian</h2>
+                    <small>AI Chat with Content Moderation, Validation & Resilience</small>
+                </div>
+                <div class="card-body">
+                    <form asp-action="Chat" method="post" class="mb-4">
+                        @Html.AntiForgeryToken()
+                        
+                        <div class="mb-3">
+                            <label asp-for="Message" class="form-label">Your Message</label>
+                            <textarea asp-for="Message" class="form-control" rows="4" placeholder="Type your message here..."></textarea>
+                            <span asp-validation-for="Message" class="text-danger"></span>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary btn-lg w-100">
+                            <i class="bi bi-send"></i> Send Message
+                        </button>
+                    </form>
+
+                    @if (ViewBag.Response != null)
+                    {
+                        var response = ViewBag.Response as Bipins.AI.Guardian.Models.ChatResponseModel;
+                        if (response != null)
+                        {
+                        <div class="alert @(response.Error != null ? "alert-danger" : "alert-success")">
+                            @if (response.Error != null)
+                            {
+                                <h5>❌ Error</h5>
+                                <p>@response.Error</p>
+                            }
+                            else
+                            {
+                                <h5>✅ Response</h5>
+                                <p>@response.Response</p>
+                                
+                                <hr>
+                                
+                                <div class="row mt-3">
+                                    @if (response.IsModerated)
+                                    {
+                                        <div class="col-md-6">
+                                            <span class="badge bg-warning">🛡️ Content Moderated</span>
+                                            @if (!string.IsNullOrEmpty(response.SafetyLevel))
+                                            {
+                                                <small class="text-muted d-block">Categories: @response.SafetyLevel</small>
+                                            }
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <div class="col-md-6">
+                                            <span class="badge bg-success">✓ Safe Content</span>
+                                        </div>
+                                    }
+                                    
+                                    @if (response.HasRetry)
+                                    {
+                                        <div class="col-md-6">
+                                            <span class="badge bg-info">🔄 Retried @response.RetryCount times</span>
+                                        </div>
+                                    }
+                                </div>
+                                
+                                @if (response.ValidationErrors.Any())
+                                {
+                                    <div class="mt-3">
+                                        <h6>⚠️ Validation Issues:</h6>
+                                        <ul class="mb-0">
+                                            @foreach (var error in response.ValidationErrors)
+                                            {
+                                                <li>@error</li>
+                                            }
+                                        </ul>
+                                    </div>
+                                }
+                            }
+                        </div>
+                        }
+                    }
+                </div>
+            </div>
+
+            <div class="card mt-4 shadow-sm">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">Features Demonstrated</h5>
+                </div>
+                <div class="card-body">
+                    <ul class="list-unstyled">
+                        <li>✅ <strong>Content Moderation:</strong> All messages and responses are moderated</li>
+                        <li>✅ <strong>Request Validation:</strong> FluentValidation ensures input quality</li>
+                        <li>✅ <strong>Response Validation:</strong> JSON Schema validates response structure</li>
+                        <li>✅ <strong>Resilience:</strong> Polly retry policy handles transient failures</li>
+                        <li>✅ <strong>Safety Info:</strong> Safety metadata included in responses</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}
