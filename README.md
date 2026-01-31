@@ -469,6 +469,140 @@ services
 // - IAgentPlanner: Agent planner (default: LLMPlanner)
 ```
 
+### Content Moderation
+
+```csharp
+using Bipins.AI.Safety;
+using Bipins.AI.Safety.Azure;
+
+// Add content moderation
+services
+    .AddBipinsAI()
+    .AddOpenAI(o => { /* ... */ })
+    .AddContentModeration(options =>
+    {
+        options.Enabled = true;
+        options.MinimumSeverityToBlock = SafetySeverity.High;
+        options.FilterUnsafeContent = false;
+        options.ThrowOnUnsafeContent = false;
+        options.BlockedCategories = new List<SafetyCategory> 
+        { 
+            SafetyCategory.PromptInjection, 
+            SafetyCategory.SelfHarm 
+        };
+    })
+    .AddAzureContentModerator(azureOptions =>
+    {
+        azureOptions.Endpoint = "https://your-region.api.cognitive.microsoft.com";
+        azureOptions.SubscriptionKey = "your-key";
+        azureOptions.DetectPII = true;
+    })
+    .UseContentModerationMiddleware();
+
+// Content moderation is automatically applied to all LLM requests and responses
+var llmProvider = serviceProvider.GetRequiredService<ILLMProvider>();
+var response = await llmProvider.ChatAsync(new ChatRequest(
+    Messages: new[] { new Message(MessageRole.User, "Hello") }));
+
+// Check safety info
+if (response.Safety?.Flagged == true)
+{
+    Console.WriteLine($"Content flagged: {string.Join(", ", response.Safety.Categories?.Keys ?? Array.Empty<string>())}");
+}
+```
+
+### Validation
+
+```csharp
+using Bipins.AI.Validation;
+using Bipins.AI.Validation.FluentValidation;
+using Bipins.AI.Validation.JsonSchema;
+using FluentValidation;
+
+// Add validation framework
+services
+    .AddBipinsAI()
+    .AddValidation()
+    .AddFluentValidation()
+    .AddJsonSchemaValidation();
+
+// FluentValidation for request validation
+public class ChatRequestValidator : AbstractValidator<ChatRequest>
+{
+    public ChatRequestValidator()
+    {
+        RuleFor(x => x.Messages)
+            .NotEmpty()
+            .Must(m => m.Any(msg => msg.Role == MessageRole.User))
+            .WithMessage("At least one user message is required");
+    }
+}
+
+services.AddValidatorsFromAssemblyContaining<ChatRequestValidator>();
+
+// Use request validator
+var requestValidator = serviceProvider.GetRequiredService<IRequestValidator<ChatRequest>>();
+var validationResult = await requestValidator.ValidateAsync(request);
+if (!validationResult.IsValid)
+{
+    foreach (var error in validationResult.Errors)
+    {
+        Console.WriteLine($"{error.PropertyName}: {error.ErrorMessage}");
+    }
+}
+
+// JSON Schema validation for responses
+var responseValidator = serviceProvider.GetRequiredService<IResponseValidator<string>>();
+var schema = @"{
+    ""type"": ""object"",
+    ""properties"": {
+        ""content"": { ""type"": ""string"", ""minLength"": 1 }
+    },
+    ""required"": [""content""]
+}";
+
+var responseJson = JsonSerializer.Serialize(response);
+var validationResult = await responseValidator.ValidateAsync(responseJson, schema);
+```
+
+### Resilience
+
+```csharp
+using Bipins.AI.Resilience;
+
+// Add resilience with Polly
+services
+    .AddBipinsAI()
+    .AddResilience(options =>
+    {
+        options.Retry = new RetryOptions
+        {
+            MaxRetries = 3,
+            Delay = TimeSpan.FromSeconds(1),
+            BackoffStrategy = BackoffStrategy.Exponential,
+            MaxDelay = TimeSpan.FromSeconds(10)
+        };
+        options.Timeout = new TimeoutOptions
+        {
+            Timeout = TimeSpan.FromSeconds(30)
+        };
+        options.Bulkhead = new BulkheadOptions
+        {
+            MaxParallelization = 10,
+            MaxQueuingActions = 5
+        };
+    });
+
+// Use resilience policy
+var resiliencePolicy = serviceProvider.GetRequiredService<IResiliencePolicy>();
+
+var response = await resiliencePolicy.ExecuteAsync(async () =>
+{
+    return await llmProvider.ChatAsync(new ChatRequest(
+        Messages: new[] { new Message(MessageRole.User, "Hello") }));
+});
+```
+
 ## Core Types
 
 ### Models (`Bipins.AI.Core.Models`)
@@ -536,6 +670,35 @@ services
 - `LLMPlanner`: LLM-based planner using structured output
 - `NoOpPlanner`: Simple fallback planner
 
+### Safety (`Bipins.AI.Safety`)
+
+- `IContentModerator`: Interface for content moderation services
+- `ModerationResult`, `SafetyViolation`: Moderation result models
+- `SafetyCategory` (enum), `SafetySeverity` (enum): Safety classification
+- `ContentModerationOptions`: Configuration for content moderation
+- `AzureContentModerator`: Azure Cognitive Services implementation
+- `ILLMProviderMiddleware`: Service-level middleware interface
+- `ContentModerationLLMMiddleware`: Middleware for applying content moderation
+- `ModeratedLLMProvider`: Decorator that applies moderation middleware
+
+### Resilience (`Bipins.AI.Resilience`)
+
+- `IResiliencePolicy`: Interface for resilience policies
+- `IResiliencePolicyFactory`: Factory for creating resilience policies
+- `ResilienceOptions`: Configuration for resilience policies
+- `RetryOptions`, `CircuitBreakerOptions`, `TimeoutOptions`, `BulkheadOptions`: Policy-specific options
+- `BackoffStrategy` (enum): Retry backoff strategies
+- `PollyResiliencePolicy`: Polly-based implementation
+
+### Validation (`Bipins.AI.Validation`)
+
+- `IRequestValidator<T>`, `IResponseValidator<T>`: Validation interfaces
+- `ValidationResult`, `ValidationError`, `ValidationWarning`: Validation result models
+- `ValidationOptions`: Configuration for validation framework
+- `FluentValidationValidator<T>`: FluentValidation-based request validator
+- `FluentValidationValidatorFactory`: Factory for FluentValidation validators
+- `NJsonSchemaValidator<T>`, `JsonSchemaValidator`: JSON Schema-based response validators
+
 ### Utilities
 
 - `SnakeCaseLowerNamingPolicy`: JSON naming policy for snake_case serialization
@@ -558,6 +721,8 @@ b) **AICloudCostOptimizationAdvisor** - A web application that analyzes Terrafor
 c) **AICostOptimizationAdvisor** - A serverless application built with AWS Lambda and React that analyzes AWS Cost Explorer data using AWS Bedrock. This sample demonstrates serverless architecture patterns, integration with AWS services, cost data caching with DynamoDB, and AI-powered cost analysis with historical tracking capabilities.
 
 d) **Bipins.AI.AgentSamples** - An interactive console application demonstrating Agentic AI capabilities with autonomous agents. This sample showcases agent execution with multiple tools (calculator, weather, vector search), conversation memory across multiple requests, LLM-based planning for complex multi-step tasks, streaming agent responses, and RAG integration with vector search. The application features a modular architecture with an interactive menu system for selecting and running different scenarios. It demonstrates how agents can autonomously use tools, maintain context across conversations, plan multi-step workflows, and provide real-time streaming responses.
+
+e) **Bipins.AI.Guardian** - A simple MVC web application demonstrating safety, validation, and resilience features. This sample showcases content moderation with automatic detection of unsafe content, FluentValidation for request validation, JSON Schema validation for response structure, and Polly-based resilience policies with retry and timeout handling. The application provides a clean web interface for testing these features with OpenAI chat completions, displaying moderation status, validation results, and retry information.
 
 e) **Bipins.AI.Guardian** - A simple MVC web application demonstrating safety, validation, and resilience features. This sample showcases content moderation with automatic detection of unsafe content, FluentValidation for request validation, JSON Schema validation for response structure, and Polly-based resilience policies with retry and timeout handling. The application provides a clean web interface for testing these features with OpenAI chat completions, displaying moderation status, validation results, and retry information.
 
