@@ -31,6 +31,10 @@ using Bipins.AI.Agents.Memory;
 using Bipins.AI.Agents.Planning;
 using Bipins.AI.Agents.Tools;
 using Bipins.AI.Agents.Tools.BuiltIn;
+using Bipins.AI.Safety;
+using Bipins.AI.Safety.Azure;
+using Bipins.AI.Resilience;
+using Bipins.AI.Validation;
 using Microsoft.Extensions.Logging;
 
 namespace Bipins.AI;
@@ -372,6 +376,160 @@ public static class ServiceCollectionExtensions
             var logger = sp.GetService<ILogger<VectorStoreAgentMemory>>();
             return new VectorStoreAgentMemory(vectorStore, embeddingModel, collectionName, logger);
         });
+        return builder;
+    }
+
+    /// <summary>
+    /// Adds content moderation services.
+    /// </summary>
+    public static IBipinsAIBuilder AddContentModeration(
+        this IBipinsAIBuilder builder, 
+        Action<ContentModerationOptions>? configure = null)
+    {
+        if (configure != null)
+        {
+            builder.Services.Configure(configure);
+        }
+        else
+        {
+            builder.Services.Configure<ContentModerationOptions>(options => { });
+        }
+
+        return builder;
+    }
+
+    /// <summary>
+    /// Adds Azure Content Moderator.
+    /// </summary>
+    public static IBipinsAIBuilder AddAzureContentModerator(
+        this IBipinsAIBuilder builder, 
+        Action<AzureContentModeratorOptions> configure)
+    {
+        builder.Services.Configure(configure);
+        builder.Services.AddHttpClient<AzureContentModerator>();
+        builder.Services.AddSingleton<IContentModerator, AzureContentModerator>();
+
+        // Register content moderation middleware
+        builder.Services.AddSingleton<Safety.Middleware.ILLMProviderMiddleware, Safety.Middleware.ContentModerationLLMMiddleware>();
+
+        return builder;
+    }
+
+    /// <summary>
+    /// Enables content moderation middleware for LLM provider calls.
+    /// This wraps the ILLMProvider with moderation middleware.
+    /// </summary>
+    public static IBipinsAIBuilder UseContentModerationMiddleware(this IBipinsAIBuilder builder)
+    {
+        // Store original provider registrations
+        var descriptors = builder.Services
+            .Where(d => d.ServiceType == typeof(ILLMProvider) && d.ImplementationType != null)
+            .ToList();
+
+        // Remove original registrations
+        foreach (var descriptor in descriptors)
+        {
+            builder.Services.Remove(descriptor);
+        }
+
+        // Register factory that wraps with middleware
+        builder.Services.AddSingleton<ILLMProvider>(sp =>
+        {
+            // Get the original provider implementation
+            var originalType = descriptors.FirstOrDefault()?.ImplementationType;
+            if (originalType == null)
+            {
+                throw new InvalidOperationException(
+                    "No ILLMProvider found. Register a provider (AddOpenAI, AddAnthropic, etc.) before enabling content moderation middleware.");
+            }
+
+            // Create original provider instance
+            var originalProvider = (ILLMProvider)ActivatorUtilities.CreateInstance(sp, originalType);
+
+            // Get middleware
+            var middleware = sp.GetServices<Safety.Middleware.ILLMProviderMiddleware>().ToList();
+            var logger = sp.GetService<ILogger<Safety.Middleware.ModeratedLLMProvider>>();
+            
+            // Wrap with moderation
+            return new Safety.Middleware.ModeratedLLMProvider(originalProvider, middleware, logger);
+        });
+
+        return builder;
+    }
+
+    /// <summary>
+    /// Adds resilience policy services.
+    /// </summary>
+    public static IBipinsAIBuilder AddResilience(
+        this IBipinsAIBuilder builder, 
+        Action<ResilienceOptions>? configure = null)
+    {
+        if (configure != null)
+        {
+            builder.Services.Configure(configure);
+        }
+
+        builder.Services.AddSingleton<IResiliencePolicyFactory, ResiliencePolicyFactory>();
+        
+        // Register default policy if options are provided
+        builder.Services.AddSingleton<IResiliencePolicy>(sp =>
+        {
+            var options = sp.GetService<Microsoft.Extensions.Options.IOptions<ResilienceOptions>>()?.Value;
+            if (options != null)
+            {
+                var factory = sp.GetRequiredService<IResiliencePolicyFactory>();
+                return factory.CreatePolicy(options);
+            }
+            return new PollyResiliencePolicy(new ResilienceOptions(), sp.GetService<ILogger<PollyResiliencePolicy>>());
+        });
+
+        return builder;
+    }
+
+    /// <summary>
+    /// Adds validation services.
+    /// </summary>
+    public static IBipinsAIBuilder AddValidation(
+        this IBipinsAIBuilder builder, 
+        Action<ValidationOptions>? configure = null)
+    {
+        if (configure != null)
+        {
+            builder.Services.Configure(configure);
+        }
+        else
+        {
+            builder.Services.Configure<ValidationOptions>(options => { });
+        }
+
+        return builder;
+    }
+
+    /// <summary>
+    /// Adds FluentValidation support.
+    /// </summary>
+    public static IBipinsAIBuilder AddFluentValidation(
+        this IBipinsAIBuilder builder, 
+        Action<FluentValidation.AssemblyScanner.AssemblyScanResult>? configure = null)
+    {
+        // FluentValidation validators should be registered by the consumer
+        // This extension just registers the factory
+        builder.Services.AddSingleton<Validation.FluentValidation.FluentValidationValidatorFactory>();
+
+        return builder;
+    }
+
+    /// <summary>
+    /// Adds NJsonSchema validation support.
+    /// </summary>
+    public static IBipinsAIBuilder AddJsonSchemaValidation(this IBipinsAIBuilder builder)
+    {
+        builder.Services.AddSingleton<Validation.JsonSchema.JsonSchemaValidator>();
+        
+        // Register generic validators for common types
+        builder.Services.AddSingleton<IResponseValidator<string>>(sp =>
+            sp.GetRequiredService<Validation.JsonSchema.JsonSchemaValidator>());
+
         return builder;
     }
 }
