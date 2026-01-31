@@ -8,7 +8,6 @@ A simple MVC web application demonstrating Bipins.AI's safety, validation, and r
 - ✅ **Request Validation**: FluentValidation ensures input quality and safety
 - ✅ **Response Validation**: JSON Schema validates response structure
 - ✅ **Resilience**: Polly retry policy handles transient failures
-- ✅ **Safety Info**: Safety metadata included in responses
 
 ## Setup
 
@@ -34,7 +33,6 @@ A simple MVC web application demonstrating Bipins.AI's safety, validation, and r
    - Content moderation status
    - Validation results
    - Retry information (if applicable)
-   - Safety metadata
 
 ## Configuration
 

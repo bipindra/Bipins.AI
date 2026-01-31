@@ -699,11 +699,6 @@ var response = await resiliencePolicy.ExecuteAsync(async () =>
 - `FluentValidationValidatorFactory`: Factory for FluentValidation validators
 - `NJsonSchemaValidator<T>`, `JsonSchemaValidator`: JSON Schema-based response validators
 
-### Utilities
-
-- `SnakeCaseLowerNamingPolicy`: JSON naming policy for snake_case serialization
-- `StructuredOutputHelper`: Helper for parsing structured JSON responses
-
 ## Requirements
 
 - .NET Standard 2.1, .NET 7.0, .NET 8.0, .NET 9.0, or .NET 10.0

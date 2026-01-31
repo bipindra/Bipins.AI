@@ -679,12 +679,6 @@ services
 - `LLMPlanner`: LLM-based planner using structured output
 - `NoOpPlanner`: Simple fallback planner
 
-### Utilities
-
-- `SnakeCaseLowerNamingPolicy`: JSON naming policy for snake_case serialization
-- `StructuredOutputHelper`: Helper for parsing structured JSON responses
-- `ConfigurationExtensions`: Configuration helpers for environment variables
-
 ## Advanced Usage
 
 ### Custom Chunking Strategies
