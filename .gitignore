@@ -7,7 +7,7 @@ artifacts/
 *.snupkg
 test-results/
 coverage/
-tools/
+/tools/
 
 # User-specific files
 *.suo
@@ -196,3 +196,9 @@ TestResults/
 *.temp
 *.swp
 *~
+
+# Ensure CodeGen and Tools directories in src are NOT ignored
+!src/**/Tools/
+!src/**/Tools/**
+!src/**/CodeGen/
+!src/**/CodeGen/**

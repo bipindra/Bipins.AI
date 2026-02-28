@@ -4,7 +4,7 @@ This sample application demonstrates the Agentic AI capabilities of Bipins.AI, i
 
 ## Overview
 
-The sample includes six comprehensive scenarios that showcase different aspects of the Agentic AI framework:
+The sample includes seven comprehensive scenarios that showcase different aspects of the Agentic AI framework:
 
 1. **Basic Agent Execution** - Simple agent with calculator tool
 2. **Agent with Multiple Tools** - Agent using multiple tools in sequence
@@ -12,6 +12,7 @@ The sample includes six comprehensive scenarios that showcase different aspects 
 4. **Agent with Planning** - Complex multi-step tasks with execution planning
 5. **Streaming Agent Execution** - Real-time streaming of agent responses
 6. **Agent with Vector Search** - RAG integration with vector search tool (optional)
+7. **Swagger Client Generator** - Autonomous code generation from OpenAPI specs
 
 ## Prerequisites
 
@@ -155,6 +156,19 @@ Shows integration with RAG capabilities through the vector search tool. The agen
 - Vector search tool
 - RAG integration with agents
 - Knowledge base querying
+
+### Scenario 7: Swagger Client Generator
+
+Demonstrates **agentic code generation** where the agent autonomously generates a complete C# API client library from an OpenAPI/Swagger specification. The agent decides to use the tool, extracts parameters from natural language, and generates production-ready code.
+
+**Key Concepts:**
+- Autonomous tool selection and execution
+- Code generation from OpenAPI specs
+- Natural language to structured parameters
+- Production-ready client library generation
+- SOLID principles in generated code
+
+See [SwaggerClientGenerator_README.md](./Scenarios/SwaggerClientGenerator_README.md) for detailed documentation.
 
 ## Custom Tool Implementation
 

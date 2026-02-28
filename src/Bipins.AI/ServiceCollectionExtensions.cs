@@ -365,6 +365,27 @@ public static class ServiceCollectionExtensions
     }
 
     /// <summary>
+    /// Registers the Swagger client generator tool (requires IHttpClientFactory).
+    /// Generates complete C# client libraries from OpenAPI/Swagger specifications.
+    /// </summary>
+    public static IBipinsAIBuilder AddSwaggerClientGeneratorTool(this IBipinsAIBuilder builder)
+    {
+        builder.Services.AddHttpClient();
+        
+        // Register code generation dependencies
+        builder.Services.AddSingleton<Agents.Tools.CodeGen.IOpenApiParser, Agents.Tools.CodeGen.OpenApiParser>();
+        builder.Services.AddSingleton<Agents.Tools.CodeGen.IModelGenerator, Agents.Tools.CodeGen.ModelGenerator>();
+        builder.Services.AddSingleton<Agents.Tools.CodeGen.IClientGenerator, Agents.Tools.CodeGen.ClientGenerator>();
+        builder.Services.AddSingleton<Agents.Tools.CodeGen.IAuthGenerator, Agents.Tools.CodeGen.AuthGenerator>();
+        builder.Services.AddSingleton<Agents.Tools.CodeGen.IFileWriter, Agents.Tools.CodeGen.FileWriter>();
+        
+        // Register the tool itself
+        builder.Services.AddSingleton<IToolExecutor, SwaggerClientGeneratorTool>();
+        
+        return builder;
+    }
+
+    /// <summary>
     /// Configures agent memory to use vector store (requires IVectorStore and IEmbeddingModel).
     /// </summary>
     public static IBipinsAIBuilder UseVectorStoreMemory(this IBipinsAIBuilder builder, string collectionName = "agent_memory")

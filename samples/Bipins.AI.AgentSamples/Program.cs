@@ -45,10 +45,11 @@ var host = Host.CreateDefaultBuilder(args)
             .AddBipinsAIAgents()
             .AddCalculatorTool()
             .AddTool(new WeatherTool())
+            .AddSwaggerClientGeneratorTool()
             .AddAgent("assistant", options =>
             {
                 options.Name = "AI Assistant";
-                options.SystemPrompt = "You are a helpful AI assistant that can use tools to help users. When you need to perform calculations, use the calculator tool. When you need weather information, use the weather tool.";
+                options.SystemPrompt = "You are a helpful AI assistant that can use tools to help users. When you need to perform calculations, use the calculator tool. When you need weather information, use the weather tool. When you need to generate API clients from Swagger/OpenAPI specifications, use the swagger_client_generator tool.";
                 options.EnablePlanning = true;
                 options.EnableMemory = true;
                 options.MaxIterations = 10;
@@ -81,6 +82,7 @@ var host = Host.CreateDefaultBuilder(args)
         services.AddTransient<IScenario, PlanningScenario>();
         services.AddTransient<IScenario, StreamingScenario>();
         services.AddTransient<IScenario, VectorSearchScenario>();
+        services.AddTransient<IScenario, SwaggerClientGeneratorScenario>();
 
         // Note: ScenarioRunner will be created after scenarios are filtered
         // We'll create it manually in Program.cs after filtering

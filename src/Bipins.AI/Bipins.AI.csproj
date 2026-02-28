@@ -94,6 +94,10 @@
     <!-- Validation -->
     <PackageReference Include="FluentValidation" Version="11.9.0" />
     <PackageReference Include="NJsonSchema" Version="11.0.2" />
+    
+    <!-- OpenAPI/Swagger Code Generation -->
+    <PackageReference Include="Microsoft.OpenApi.Readers" Version="1.6.14" />
+    <PackageReference Include="Scriban" Version="5.9.1" />
   </ItemGroup>
 
 </Project>
