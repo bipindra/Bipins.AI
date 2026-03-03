@@ -46,15 +46,28 @@ public class OpenAiChatModel : IChatModel
             "function",
             new OpenAiFunction(t.Name, t.Description, t.Parameters))).ToList();
 
-        // Handle structured output
+        // Handle structured output (OpenAI expects response_format.json_schema with name, schema, strict; use DTO for snake_case)
         object? responseFormat = null;
         if (request.StructuredOutput != null)
         {
-            responseFormat = new
+            var isJsonSchema = string.Equals(request.StructuredOutput.ResponseFormat, "json_schema", StringComparison.OrdinalIgnoreCase);
+            if (isJsonSchema)
             {
-                type = request.StructuredOutput.ResponseFormat,
-                json_schema = request.StructuredOutput.Schema
-            };
+                responseFormat = new OpenAiResponseFormat
+                {
+                    Type = "json_schema",
+                    JsonSchema = new OpenAiJsonSchemaFormat
+                    {
+                        Name = "response_schema",
+                        Schema = request.StructuredOutput.Schema,
+                        Strict = true
+                    }
+                };
+            }
+            else
+            {
+                responseFormat = new OpenAiResponseFormat { Type = request.StructuredOutput.ResponseFormat };
+            }
         }
 
         var openAiRequest = new OpenAiChatRequest(
@@ -88,6 +101,19 @@ public class OpenAiChatModel : IChatModel
                         await Task.Delay(TimeSpan.FromSeconds(retryAfter.Value), cancellationToken);
                         attempt++;
                         continue;
+                    }
+                }
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    var errorBody = await response.Content.ReadAsStringAsync();
+                    // 4xx: throw with body for diagnostics; 5xx: let EnsureSuccessStatusCode throw so retry logic runs
+                    if ((int)response.StatusCode >= 400 && (int)response.StatusCode < 500)
+                    {
+                        var errorMessage = !string.IsNullOrEmpty(errorBody)
+                            ? $"{(int)response.StatusCode} {response.ReasonPhrase}: {errorBody}"
+                            : $"{(int)response.StatusCode} {response.ReasonPhrase}";
+                        throw new OpenAiException(errorMessage);
                     }
                 }
 
@@ -135,12 +161,25 @@ public class OpenAiChatModel : IChatModel
                         openAiResponse.Usage.TotalTokens)
                     : null;
 
+                JsonElement? structuredOutput = null;
+                if (request.StructuredOutput != null && !string.IsNullOrWhiteSpace(message.Content))
+                {
+                    structuredOutput = StructuredOutputHelper.ExtractStructuredOutput(message.Content);
+                    if (structuredOutput.HasValue && request.StructuredOutput.Schema.ValueKind != JsonValueKind.Null && request.StructuredOutput.Schema.ValueKind != JsonValueKind.Undefined)
+                    {
+                        var validated = StructuredOutputHelper.ParseAndValidate(message.Content, request.StructuredOutput.Schema);
+                        if (validated.HasValue)
+                            structuredOutput = validated;
+                    }
+                }
+
                 return new ChatResponse(
                     message.Content ?? string.Empty,
                     toolCalls.Count > 0 ? toolCalls : null,
                     usage,
                     openAiResponse.Model,
-                    choice.FinishReason);
+                    choice.FinishReason,
+                    StructuredOutput: structuredOutput);
 
             }
             catch (HttpRequestException ex) when (IsRetryable(ex) && attempt < _options.MaxRetries - 1)

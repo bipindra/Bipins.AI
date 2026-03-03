@@ -60,16 +60,18 @@ public class LLMPlanner : IAgentPlanner
                                     order = new { type = "integer" },
                                     action = new { type = "string" },
                                     toolName = new { type = "string" },
-                                    parameters = new { type = "object" },
+                                    parameters = new { type = "string" },
                                     expectedOutcome = new { type = "string" }
                                 },
-                                required = new[] { "order", "action" }
+                                required = new[] { "order", "action", "toolName", "parameters", "expectedOutcome" },
+                                additionalProperties = false
                             }
                         },
                         reasoning = new { type = "string" }
                     },
-                    required = new[] { "steps" }
-                }),
+                    required = new[] { "steps", "reasoning" },
+                    additionalProperties = false
+                }),                
                 ResponseFormat: "json_schema"));
 
         try
@@ -143,9 +145,18 @@ public class LLMPlanner : IAgentPlanner
                 var toolName = stepElement.TryGetProperty("toolName", out var toolProp) 
                     ? toolProp.GetString() 
                     : null;
-                var parameters = stepElement.TryGetProperty("parameters", out var paramsProp) && paramsProp.ValueKind == JsonValueKind.Object
-                    ? JsonSerializer.Deserialize<Dictionary<string, object>>(paramsProp.GetRawText())
-                    : null;
+                Dictionary<string, object>? parameters = null;
+                if (stepElement.TryGetProperty("parameters", out var paramsProp))
+                {
+                    if (paramsProp.ValueKind == JsonValueKind.Object)
+                        parameters = JsonSerializer.Deserialize<Dictionary<string, object>>(paramsProp.GetRawText());
+                    else if (paramsProp.ValueKind == JsonValueKind.String)
+                    {
+                        var paramsJson = paramsProp.GetString();
+                        if (!string.IsNullOrWhiteSpace(paramsJson))
+                            parameters = JsonSerializer.Deserialize<Dictionary<string, object>>(paramsJson);
+                    }
+                }
                 var expectedOutcome = stepElement.TryGetProperty("expectedOutcome", out var outcomeProp) 
                     ? outcomeProp.GetString() 
                     : null;

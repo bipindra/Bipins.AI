@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Text.Json;
 using Bipins.AI.Core.Models;
 using Bipins.AI.Providers.AzureOpenAI.Models;
 using Microsoft.Extensions.Logging;
@@ -138,12 +139,25 @@ public class AzureOpenAiChatModel : IChatModel
                         openAiResponse.Usage.TotalTokens)
                     : null;
 
+                JsonElement? structuredOutput = null;
+                if (request.StructuredOutput != null && !string.IsNullOrWhiteSpace(message.Content))
+                {
+                    structuredOutput = StructuredOutputHelper.ExtractStructuredOutput(message.Content);
+                    if (structuredOutput.HasValue && request.StructuredOutput.Schema.ValueKind != JsonValueKind.Null && request.StructuredOutput.Schema.ValueKind != JsonValueKind.Undefined)
+                    {
+                        var validated = StructuredOutputHelper.ParseAndValidate(message.Content, request.StructuredOutput.Schema);
+                        if (validated.HasValue)
+                            structuredOutput = validated;
+                    }
+                }
+
                 return new ChatResponse(
                     message.Content ?? string.Empty,
                     toolCalls.Count > 0 ? toolCalls : null,
                     usage,
                     openAiResponse.Model,
-                    choice.FinishReason);
+                    choice.FinishReason,
+                    StructuredOutput: structuredOutput);
             }
             catch (HttpRequestException ex) when (IsRetryable(ex) && attempt < _options.MaxRetries - 1)
             {

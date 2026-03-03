@@ -57,15 +57,23 @@ public class OpenAiChatModelStreaming : IChatModelStreaming
             tools,
             request.ToolChoice != null ? new { type = request.ToolChoice } : null);
 
-        // Handle structured output
+        // Handle structured output (OpenAI expects json_schema: { name, schema, strict })
         object? responseFormat = null;
         if (request.StructuredOutput != null)
         {
-            responseFormat = new
-            {
-                type = request.StructuredOutput.ResponseFormat,
-                json_schema = request.StructuredOutput.Schema
-            };
+            var isJsonSchema = string.Equals(request.StructuredOutput.ResponseFormat, "json_schema", StringComparison.OrdinalIgnoreCase);
+            responseFormat = isJsonSchema
+                ? new
+                {
+                    type = "json_schema",
+                    json_schema = new
+                    {
+                        name = "response_schema",
+                        schema = request.StructuredOutput.Schema,
+                        strict = true
+                    }
+                }
+                : new { type = request.StructuredOutput.ResponseFormat };
         }
 
         // Add stream parameter to request
