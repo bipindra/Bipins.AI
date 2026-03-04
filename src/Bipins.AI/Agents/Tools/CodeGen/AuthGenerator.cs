@@ -41,16 +41,11 @@ public class AuthGenerator : IAuthGenerator
         {
             try
             {
-                var code = GenerateAuthHandler(securityScheme.Key, securityScheme.Value, namespaceName, options);
-                
-                if (!string.IsNullOrEmpty(code))
+                var schemeFiles = GenerateAuthHandlerFiles(securityScheme.Key, securityScheme.Value, namespaceName, options);
+                foreach (var f in schemeFiles)
                 {
-                    files.Add(new GeneratedFile(
-                        Path: $"Auth/{securityScheme.Key}AuthenticationHandler.cs",
-                        Content: code,
-                        Description: $"Authentication handler for {securityScheme.Key}"));
-
-                    _logger.LogDebug("Generated auth handler for {SchemeName}", securityScheme.Key);
+                    files.Add(f);
+                    _logger.LogDebug("Generated auth file {Path} for {SchemeName}", f.Path, securityScheme.Key);
                 }
             }
             catch (Exception ex)
@@ -63,162 +58,110 @@ public class AuthGenerator : IAuthGenerator
         return Task.FromResult(files);
     }
 
-    private string GenerateAuthHandler(
+    private List<GeneratedFile> GenerateAuthHandlerFiles(
         string schemeName,
         OpenApiSecurityScheme scheme,
         string namespaceName,
         GeneratorOptions options)
     {
-        return scheme.Type switch
-        {
-            SecuritySchemeType.Http when scheme.Scheme?.ToLower() == "bearer" 
-                => GenerateBearerAuthHandler(schemeName, namespaceName, options),
-            SecuritySchemeType.ApiKey 
-                => GenerateApiKeyAuthHandler(schemeName, scheme, namespaceName, options),
-            _ => string.Empty
-        };
+        if (scheme.Type == SecuritySchemeType.Http && scheme.Scheme?.ToLower() == "bearer")
+            return GenerateBearerAuthHandlerFiles(schemeName, namespaceName, options);
+        if (scheme.Type == SecuritySchemeType.ApiKey)
+            return GenerateApiKeyAuthHandlerFiles(schemeName, scheme, namespaceName, options);
+        return new List<GeneratedFile>();
     }
 
-    private string GenerateBearerAuthHandler(string schemeName, string namespaceName, GeneratorOptions options)
+    private List<GeneratedFile> GenerateBearerAuthHandlerFiles(string schemeName, string namespaceName, GeneratorOptions options)
     {
+        var files = new List<GeneratedFile>();
         var sb = new StringBuilder();
-
         AppendFileHeader(sb);
         sb.AppendLine($"namespace {namespaceName}.Auth;");
         sb.AppendLine();
         sb.AppendLine("using System.Net.Http.Headers;");
         sb.AppendLine();
-
         if (options.IncludeXmlDocs)
-        {
-            sb.AppendLine("/// <summary>");
-            sb.AppendLine("/// Provides bearer token for API requests.");
-            sb.AppendLine("/// </summary>");
-        }
+            sb.AppendLine("/// <summary>Provides bearer token for API requests.</summary>");
         sb.AppendLine("public interface ITokenProvider");
         sb.AppendLine("{");
-        if (options.IncludeXmlDocs)
-        {
-            sb.AppendLine("    /// <summary>");
-            sb.AppendLine("    /// Gets the bearer token for authentication.");
-            sb.AppendLine("    /// </summary>");
-        }
         sb.AppendLine("    Task<string> GetTokenAsync(CancellationToken cancellationToken = default);");
         sb.AppendLine("}");
+        files.Add(new GeneratedFile(Path: "Auth/ITokenProvider.cs", Content: sb.ToString(), Description: "Token provider interface"));
+        sb = new StringBuilder();
+        AppendFileHeader(sb);
+        sb.AppendLine($"namespace {namespaceName}.Auth;");
         sb.AppendLine();
-
+        sb.AppendLine("using System.Net.Http.Headers;");
+        sb.AppendLine();
         if (options.IncludeXmlDocs)
-        {
-            sb.AppendLine("/// <summary>");
-            sb.AppendLine("/// Delegating handler that adds bearer token authentication to HTTP requests.");
-            sb.AppendLine("/// </summary>");
-        }
+            sb.AppendLine("/// <summary>Delegating handler that adds bearer token authentication to HTTP requests.</summary>");
         sb.AppendLine("public class BearerAuthenticationHandler : DelegatingHandler");
         sb.AppendLine("{");
         sb.AppendLine("    private readonly ITokenProvider _tokenProvider;");
         sb.AppendLine();
-        
-        if (options.IncludeXmlDocs)
-        {
-            sb.AppendLine("    /// <summary>");
-            sb.AppendLine("    /// Initializes a new instance of the <see cref=\"BearerAuthenticationHandler\"/> class.");
-            sb.AppendLine("    /// </summary>");
-        }
         sb.AppendLine("    public BearerAuthenticationHandler(ITokenProvider tokenProvider)");
         sb.AppendLine("    {");
         sb.AppendLine("        _tokenProvider = tokenProvider ?? throw new ArgumentNullException(nameof(tokenProvider));");
         sb.AppendLine("    }");
         sb.AppendLine();
-        
-        if (options.IncludeXmlDocs)
-        {
-            sb.AppendLine("    /// <inheritdoc />");
-        }
         sb.AppendLine("    protected override async Task<HttpResponseMessage> SendAsync(");
         sb.AppendLine("        HttpRequestMessage request,");
         sb.AppendLine("        CancellationToken cancellationToken)");
         sb.AppendLine("    {");
         sb.AppendLine("        var token = await _tokenProvider.GetTokenAsync(cancellationToken);");
         sb.AppendLine("        request.Headers.Authorization = new AuthenticationHeaderValue(\"Bearer\", token);");
-        sb.AppendLine();
         sb.AppendLine("        return await base.SendAsync(request, cancellationToken);");
         sb.AppendLine("    }");
         sb.AppendLine("}");
-
-        return sb.ToString();
+        files.Add(new GeneratedFile(Path: "Auth/BearerAuthenticationHandler.cs", Content: sb.ToString(), Description: "Bearer auth handler"));
+        return files;
     }
 
-    private string GenerateApiKeyAuthHandler(
+    private List<GeneratedFile> GenerateApiKeyAuthHandlerFiles(
         string schemeName,
         OpenApiSecurityScheme scheme,
         string namespaceName,
         GeneratorOptions options)
     {
+        var prefix = TypeMapper.ToPascalCase(schemeName);
+        var optionsClassName = prefix + "Options";
+        var handlerClassName = prefix + "AuthenticationHandler";
+        var files = new List<GeneratedFile>();
         var sb = new StringBuilder();
-
+        AppendFileHeader(sb);
+        sb.AppendLine($"namespace {namespaceName}.Auth;");
+        sb.AppendLine();
+        if (options.IncludeXmlDocs)
+            sb.AppendLine("/// <summary>Options for API key authentication.</summary>");
+        sb.AppendLine($"public class {optionsClassName}");
+        sb.AppendLine("{");
+        sb.AppendLine("    public string ApiKey { get; set; } = string.Empty;");
+        sb.AppendLine("}");
+        files.Add(new GeneratedFile(Path: $"Auth/{optionsClassName}.cs", Content: sb.ToString(), Description: "API key options"));
+        sb = new StringBuilder();
         AppendFileHeader(sb);
         sb.AppendLine($"namespace {namespaceName}.Auth;");
         sb.AppendLine();
         sb.AppendLine("using Microsoft.Extensions.Options;");
         sb.AppendLine();
-
-        // Options class
         if (options.IncludeXmlDocs)
-        {
-            sb.AppendLine("/// <summary>");
-            sb.AppendLine("/// Options for API key authentication.");
-            sb.AppendLine("/// </summary>");
-        }
-        sb.AppendLine("public class ApiKeyOptions");
+            sb.AppendLine("/// <summary>Delegating handler that adds API key authentication to HTTP requests.</summary>");
+        sb.AppendLine($"public class {handlerClassName} : DelegatingHandler");
         sb.AppendLine("{");
-        if (options.IncludeXmlDocs)
-        {
-            sb.AppendLine("    /// <summary>");
-            sb.AppendLine("    /// Gets or sets the API key.");
-            sb.AppendLine("    /// </summary>");
-        }
-        sb.AppendLine("    public string ApiKey { get; set; } = string.Empty;");
-        sb.AppendLine("}");
-        sb.AppendLine();
-
-        // Handler class
-        if (options.IncludeXmlDocs)
-        {
-            sb.AppendLine("/// <summary>");
-            sb.AppendLine($"/// Delegating handler that adds API key authentication to HTTP requests.");
-            sb.AppendLine("/// </summary>");
-        }
-        sb.AppendLine("public class ApiKeyAuthenticationHandler : DelegatingHandler");
-        sb.AppendLine("{");
-        sb.AppendLine("    private readonly ApiKeyOptions _options;");
+        sb.AppendLine($"    private readonly {optionsClassName} _options;");
         sb.AppendLine($"    private const string ApiKeyName = \"{scheme.Name}\";");
         sb.AppendLine();
-        
-        if (options.IncludeXmlDocs)
-        {
-            sb.AppendLine("    /// <summary>");
-            sb.AppendLine("    /// Initializes a new instance of the <see cref=\"ApiKeyAuthenticationHandler\"/> class.");
-            sb.AppendLine("    /// </summary>");
-        }
-        sb.AppendLine("    public ApiKeyAuthenticationHandler(IOptions<ApiKeyOptions> options)");
+        sb.AppendLine($"    public {handlerClassName}(IOptions<{optionsClassName}> options)");
         sb.AppendLine("    {");
         sb.AppendLine("        _options = options?.Value ?? throw new ArgumentNullException(nameof(options));");
         sb.AppendLine("    }");
         sb.AppendLine();
-        
-        if (options.IncludeXmlDocs)
-        {
-            sb.AppendLine("    /// <inheritdoc />");
-        }
         sb.AppendLine("    protected override Task<HttpResponseMessage> SendAsync(");
         sb.AppendLine("        HttpRequestMessage request,");
         sb.AppendLine("        CancellationToken cancellationToken)");
         sb.AppendLine("    {");
-
         if (scheme.In == ParameterLocation.Header)
-        {
             sb.AppendLine("        request.Headers.Add(ApiKeyName, _options.ApiKey);");
-        }
         else if (scheme.In == ParameterLocation.Query)
         {
             sb.AppendLine("        var uriBuilder = new UriBuilder(request.RequestUri!);");
@@ -227,13 +170,11 @@ public class AuthGenerator : IAuthGenerator
             sb.AppendLine("        uriBuilder.Query = query.ToString();");
             sb.AppendLine("        request.RequestUri = uriBuilder.Uri;");
         }
-
-        sb.AppendLine();
         sb.AppendLine("        return base.SendAsync(request, cancellationToken);");
         sb.AppendLine("    }");
         sb.AppendLine("}");
-
-        return sb.ToString();
+        files.Add(new GeneratedFile(Path: $"Auth/{handlerClassName}.cs", Content: sb.ToString(), Description: "API key auth handler"));
+        return files;
     }
 
     private void AppendFileHeader(StringBuilder sb)

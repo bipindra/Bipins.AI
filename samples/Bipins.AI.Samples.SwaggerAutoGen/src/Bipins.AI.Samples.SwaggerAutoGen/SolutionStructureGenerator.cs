@@ -4,6 +4,9 @@ using Microsoft.OpenApi.Models;
 
 namespace Bipins.AI.Samples.SwaggerAutoGen;
 
+/// <summary>One operation for test generation: method name and minimal argument expressions.</summary>
+internal record OperationTestDesc(string MethodName, List<string> ArgExpressions);
+
 /// <summary>
 /// Generates a full solution structure: .sln, src (Console + Client), tests (Unit + Integration).
 /// Client content is already written by the CodeGen pipeline; this adds .csproj files, Console Program.cs, and test projects.
@@ -52,13 +55,13 @@ public class SolutionStructureGenerator
         var unitTestDir = Path.Combine(outputPath, "tests", $"{solutionName}.Tests.Unit");
         Directory.CreateDirectory(unitTestDir);
         await WriteUnitTestCsprojAsync(unitTestDir, solutionName, outputPath, cancellationToken);
-        await WriteUnitTestsAsync(unitTestDir, solutionName, namespaceName, clientTags, cancellationToken);
+        await WriteUnitTestsAsync(unitTestDir, solutionName, namespaceName, baseUrl, document, clientTags, cancellationToken);
 
         // 5. Integration test project
         var integrationTestDir = Path.Combine(outputPath, "tests", $"{solutionName}.Tests.Integration");
         Directory.CreateDirectory(integrationTestDir);
         await WriteIntegrationTestCsprojAsync(integrationTestDir, solutionName, outputPath, cancellationToken);
-        await WriteIntegrationTestsAsync(integrationTestDir, solutionName, namespaceName, baseUrl, clientTags, cancellationToken);
+        await WriteIntegrationTestsAsync(integrationTestDir, solutionName, namespaceName, baseUrl, document, clientTags, cancellationToken);
     }
 
     private static List<string> GetClientTags(OpenApiDocument document)
@@ -74,6 +77,75 @@ public class SolutionStructureGenerator
             }
         }
         return tags.OrderBy(t => t).ToList();
+    }
+
+    /// <summary>Groups operations by tag and returns method name + minimal test arg expressions per operation.</summary>
+    private static Dictionary<string, List<OperationTestDesc>> GetOperationsByTag(OpenApiDocument document)
+    {
+        var byTag = new Dictionary<string, List<OperationTestDesc>>(StringComparer.OrdinalIgnoreCase);
+        if (document.Paths == null) return byTag;
+        foreach (var pathEntry in document.Paths)
+        {
+            var pathTemplate = pathEntry.Key;
+            var pathItem = pathEntry.Value;
+            var pathItemParams = pathItem.Parameters ?? new List<Microsoft.OpenApi.Models.OpenApiParameter>();
+            foreach (var opEntry in pathItem.Operations)
+            {
+                var method = opEntry.Key;
+                var op = opEntry.Value;
+                var tag = op.Tags?.FirstOrDefault()?.Name ?? "Default";
+                var methodName = TypeMapper.ToPascalCase(op.OperationId ?? $"{method}_{pathTemplate}")
+                    + (op.OperationId?.EndsWith("Async", StringComparison.OrdinalIgnoreCase) == true ? "" : "Async");
+                var opParams = op.Parameters ?? new List<Microsoft.OpenApi.Models.OpenApiParameter>();
+                var merged = pathItemParams.Where(pp => opParams.All(o => o.Name != pp.Name)).Concat(opParams).ToList();
+                var pathParamNamesInOrder = new List<string>();
+                if (pathTemplate.IndexOf('{') >= 0)
+                {
+                    var parts = pathTemplate.Split('{', '}');
+                    for (var i = 1; i < parts.Length; i += 2)
+                        pathParamNamesInOrder.Add(parts[i].Trim());
+                }
+                var args = new List<string>();
+                foreach (var name in pathParamNamesInOrder)
+                {
+                    var p = merged.FirstOrDefault(m => m.Name == name);
+                    var csharpType = p?.Schema != null ? TypeMapper.MapToCSharpType(p.Schema) : (name.EndsWith("Id", StringComparison.OrdinalIgnoreCase) ? "long" : "string");
+                    args.Add(MinimalTestArg(csharpType));
+                }
+                foreach (var p in merged.Where(m => m.In == Microsoft.OpenApi.Models.ParameterLocation.Query))
+                {
+                    var csharpType = p.Schema != null ? TypeMapper.MapToCSharpType(p.Schema) : "string";
+                    args.Add(MinimalTestArg(csharpType));
+                }
+                foreach (var p in merged.Where(m => m.In == Microsoft.OpenApi.Models.ParameterLocation.Header))
+                {
+                    var csharpType = p.Schema != null ? TypeMapper.MapToCSharpType(p.Schema) : "string";
+                    args.Add(MinimalTestArg(csharpType));
+                }
+                var hasBody = op.RequestBody?.Content?.Any(c =>
+                    c.Key.Equals("application/json", StringComparison.OrdinalIgnoreCase) && c.Value?.Schema != null) == true;
+                var hasMultipart = op.RequestBody?.Content?.Any(c =>
+                    c.Key.Equals("multipart/form-data", StringComparison.OrdinalIgnoreCase)) == true
+                    || merged.Any(p => string.Equals(p.Name, "file", StringComparison.OrdinalIgnoreCase));
+                if (hasMultipart) { args.Add("null"); args.Add("null"); }
+                else if (hasBody) args.Add("null!");
+                args.Add("default");
+                if (!byTag.ContainsKey(tag)) byTag[tag] = new List<OperationTestDesc>();
+                byTag[tag].Add(new OperationTestDesc(methodName, args));
+            }
+        }
+        return byTag;
+    }
+
+    private static string MinimalTestArg(string csharpType)
+    {
+        if (csharpType == "CancellationToken" || csharpType == "CancellationToken?") return "default";
+        if (csharpType.Contains("List<") || csharpType.Contains("IEnumerable<")) return "new List<string>()";
+        if (csharpType == "Stream" || csharpType == "Stream?") return "null";
+        if (csharpType == "string" || csharpType == "string?") return "\"\"";
+        if (csharpType == "long" || csharpType == "long?" || csharpType == "int" || csharpType == "int?") return "0";
+        if (csharpType == "bool" || csharpType == "bool?") return "false";
+        return "null!";
     }
 
     private async Task WriteSolutionAsync(string slnPath, string solutionName, string outputPath, CancellationToken ct)
@@ -233,34 +305,62 @@ Console.WriteLine(""Client type: I{firstClient}. Add your API calls in Program.c
         await File.WriteAllTextAsync(Path.Combine(unitTestDir, $"{solutionName}.Tests.Unit.csproj"), content, ct);
     }
 
-    private async Task WriteUnitTestsAsync(string unitTestDir, string solutionName, string namespaceName, List<string> clientTags, CancellationToken ct)
+    private async Task WriteUnitTestsAsync(string unitTestDir, string solutionName, string namespaceName, string baseUrl, OpenApiDocument document, List<string> clientTags, CancellationToken ct)
     {
         var ns = namespaceName;
-        var sb = new StringBuilder();
-        sb.AppendLine("using System.Net.Http;");
-        sb.AppendLine("using Microsoft.Extensions.Logging.Abstractions;");
-        sb.AppendLine($"using {ns}.Clients;");
-        sb.AppendLine("using Moq;");
-        sb.AppendLine("using Xunit;");
-        sb.AppendLine();
-        sb.AppendLine($"namespace {solutionName}.Tests.Unit;");
-        sb.AppendLine();
-        sb.AppendLine("public class GeneratedClientTests");
-        sb.AppendLine("{");
-        if (clientTags.Count > 0)
+        var operationsByTag = GetOperationsByTag(document);
+        foreach (var tag in clientTags)
         {
-            var clientName = TypeMapper.ToPascalCase(clientTags[0]) + "Client";
+            var clientName = TypeMapper.ToPascalCase(tag) + "Client";
+            var className = clientName + "Tests";
+            var operations = operationsByTag.TryGetValue(tag, out var list) ? list : new List<OperationTestDesc>();
+            var sb = new StringBuilder();
+            sb.AppendLine("using System;");
+            sb.AppendLine("using System.Collections.Generic;");
+            sb.AppendLine("using System.Net.Http;");
+            sb.AppendLine("using System.Threading.Tasks;");
+            sb.AppendLine("using Microsoft.Extensions.Logging.Abstractions;");
+            sb.AppendLine($"using {ns}.Clients;");
+            sb.AppendLine("using Xunit;");
+            sb.AppendLine();
+            sb.AppendLine($"namespace {solutionName}.Tests.Unit;");
+            sb.AppendLine();
+            sb.AppendLine($"/// <summary>Unit tests for {clientName}.</summary>");
+            sb.AppendLine($"public class {className}");
+            sb.AppendLine("{");
+            sb.AppendLine($"    private const string BaseUrl = \"{baseUrl.Replace("\\", "\\\\").Replace("\"", "\\\"")}\";");
+            sb.AppendLine();
             sb.AppendLine($"    [Fact]");
             sb.AppendLine($"    public void {clientName}_CanBeConstructed()");
             sb.AppendLine("    {");
-            sb.AppendLine("        var httpClient = new HttpClient();");
+            sb.AppendLine("        var httpClient = new HttpClient { BaseAddress = new Uri(BaseUrl) };");
             sb.AppendLine($"        var logger = NullLogger<{clientName}>.Instance;");
             sb.AppendLine($"        var client = new {clientName}(httpClient, logger);");
             sb.AppendLine("        Assert.NotNull(client);");
             sb.AppendLine("    }");
+            foreach (var op in operations)
+            {
+                var argList = string.Join(", ", op.ArgExpressions);
+                sb.AppendLine();
+                sb.AppendLine($"    [Fact]");
+                sb.AppendLine($"    public async Task {op.MethodName}_CanBeInvoked()");
+                sb.AppendLine("    {");
+                sb.AppendLine("        using var httpClient = new HttpClient { BaseAddress = new Uri(BaseUrl) };");
+                sb.AppendLine($"        var logger = NullLogger<{clientName}>.Instance;");
+                sb.AppendLine($"        var client = new {clientName}(httpClient, logger);");
+                sb.AppendLine("        try");
+                sb.AppendLine("        {");
+                sb.AppendLine($"            await client.{op.MethodName}({argList});");
+                sb.AppendLine("        }");
+                sb.AppendLine("        catch (HttpRequestException)");
+                sb.AppendLine("        {");
+                sb.AppendLine("            // Expected when no server is running");
+                sb.AppendLine("        }");
+                sb.AppendLine("    }");
+            }
+            sb.AppendLine("}");
+            await File.WriteAllTextAsync(Path.Combine(unitTestDir, $"{className}.cs"), sb.ToString(), ct);
         }
-        sb.AppendLine("}");
-        await File.WriteAllTextAsync(Path.Combine(unitTestDir, "GeneratedClientTests.cs"), sb.ToString(), ct);
     }
 
     private async Task WriteIntegrationTestCsprojAsync(string integrationTestDir, string solutionName, string outputPath, CancellationToken ct)
@@ -289,27 +389,33 @@ Console.WriteLine(""Client type: I{firstClient}. Add your API calls in Program.c
         await File.WriteAllTextAsync(Path.Combine(integrationTestDir, $"{solutionName}.Tests.Integration.csproj"), content, ct);
     }
 
-    private async Task WriteIntegrationTestsAsync(string integrationTestDir, string solutionName, string namespaceName, string baseUrl, List<string> clientTags, CancellationToken ct)
+    private async Task WriteIntegrationTestsAsync(string integrationTestDir, string solutionName, string namespaceName, string baseUrl, OpenApiDocument document, List<string> clientTags, CancellationToken ct)
     {
         var ns = namespaceName;
-        var sb = new StringBuilder();
-        sb.AppendLine("using System;");
-        sb.AppendLine("using System.Net.Http;");
-        sb.AppendLine("using Microsoft.Extensions.Logging.Abstractions;");
-        sb.AppendLine($"using {ns}.Clients;");
-        sb.AppendLine("using Xunit;");
-        sb.AppendLine();
-        sb.AppendLine($"namespace {solutionName}.Tests.Integration;");
-        sb.AppendLine();
-        sb.AppendLine("[Trait(\"Category\", \"Integration\")]");
-        sb.AppendLine("public class GeneratedClientIntegrationTests");
-        sb.AppendLine("{");
-        sb.AppendLine($"    private const string BaseUrl = \"{baseUrl}\";");
-        sb.AppendLine();
-        if (clientTags.Count > 0)
+        var operationsByTag = GetOperationsByTag(document);
+        foreach (var tag in clientTags)
         {
-            var clientName = TypeMapper.ToPascalCase(clientTags[0]) + "Client";
-            sb.AppendLine("    [Fact(Skip = \"Requires running API. Remove Skip and call a method on the client to run.\")]");
+            var clientName = TypeMapper.ToPascalCase(tag) + "Client";
+            var className = clientName + "IntegrationTests";
+            var operations = operationsByTag.TryGetValue(tag, out var list) ? list : new List<OperationTestDesc>();
+            var sb = new StringBuilder();
+            sb.AppendLine("using System;");
+            sb.AppendLine("using System.Collections.Generic;");
+            sb.AppendLine("using System.Net.Http;");
+            sb.AppendLine("using System.Threading.Tasks;");
+            sb.AppendLine("using Microsoft.Extensions.Logging.Abstractions;");
+            sb.AppendLine($"using {ns}.Clients;");
+            sb.AppendLine("using Xunit;");
+            sb.AppendLine();
+            sb.AppendLine($"namespace {solutionName}.Tests.Integration;");
+            sb.AppendLine();
+            sb.AppendLine("[Trait(\"Category\", \"Integration\")]");
+            sb.AppendLine($"/// <summary>Integration tests for {clientName}.</summary>");
+            sb.AppendLine($"public class {className}");
+            sb.AppendLine("{");
+            sb.AppendLine($"    private const string BaseUrl = \"{baseUrl}\";");
+            sb.AppendLine();
+            sb.AppendLine("    [Fact(Skip = \"Requires running API. Remove Skip to run.\")]");
             sb.AppendLine($"    public void {clientName}_CanBeConstructed_WithHttpClient()");
             sb.AppendLine("    {");
             sb.AppendLine("        using var httpClient = new HttpClient { BaseAddress = new Uri(BaseUrl) };");
@@ -317,8 +423,21 @@ Console.WriteLine(""Client type: I{firstClient}. Add your API calls in Program.c
             sb.AppendLine($"        var client = new {clientName}(httpClient, logger);");
             sb.AppendLine("        Assert.NotNull(client);");
             sb.AppendLine("    }");
+            foreach (var op in operations)
+            {
+                var argList = string.Join(", ", op.ArgExpressions);
+                sb.AppendLine();
+                sb.AppendLine("    [Fact(Skip = \"Requires running API. Remove Skip to run.\")]");
+                sb.AppendLine($"    public async Task {op.MethodName}_InvokesApi()");
+                sb.AppendLine("    {");
+                sb.AppendLine("        using var httpClient = new HttpClient { BaseAddress = new Uri(BaseUrl) };");
+                sb.AppendLine($"        var logger = NullLogger<{clientName}>.Instance;");
+                sb.AppendLine($"        var client = new {clientName}(httpClient, logger);");
+                sb.AppendLine($"        await client.{op.MethodName}({argList});");
+                sb.AppendLine("    }");
+            }
+            sb.AppendLine("}");
+            await File.WriteAllTextAsync(Path.Combine(integrationTestDir, $"{className}.cs"), sb.ToString(), ct);
         }
-        sb.AppendLine("}");
-        await File.WriteAllTextAsync(Path.Combine(integrationTestDir, "GeneratedClientIntegrationTests.cs"), sb.ToString(), ct);
     }
 }
