@@ -81,7 +81,7 @@ using Bipins.AI.Core.Models;
 var chatModel = serviceProvider.GetRequiredService<IChatModel>();
 
 var request = new ChatRequest(
-    Messages: new[]
+    new[]
     {
         new Message(MessageRole.System, "You are a helpful assistant."),
         new Message(MessageRole.User, "What is machine learning?")
@@ -112,9 +112,9 @@ using System.Text.Json;
 var tools = new List<ToolDefinition>
 {
     new ToolDefinition(
-        Name: "get_weather",
-        Description: "Get the current weather in a given location",
-        Parameters: JsonSerializer.SerializeToElement(new
+        "get_weather",
+        "Get the current weather in a given location",
+        JsonSerializer.SerializeToElement(new
         {
             type = "object",
             properties = new
@@ -123,12 +123,11 @@ var tools = new List<ToolDefinition>
                 unit = new { type = "string", @enum = new[] { "celsius", "fahrenheit" } }
             },
             required = new[] { "location" }
-        })
-    )
+        }))
 };
 
 var request = new ChatRequest(
-    Messages: new[] { new Message(MessageRole.User, "What's the weather in San Francisco?") },
+    new[] { new Message(MessageRole.User, "What's the weather in San Francisco?") },
     Tools: tools);
 
 var response = await chatModel.GenerateAsync(request);
@@ -146,10 +145,12 @@ if (response.ToolCalls != null && response.ToolCalls.Count > 0)
 ### Embeddings
 
 ```csharp
+using Bipins.AI.Core.Models;
+
 var embeddingModel = serviceProvider.GetRequiredService<IEmbeddingModel>();
 
 var embeddingRequest = new EmbeddingRequest(
-    Inputs: new[] { "Your text to embed" },
+    new[] { "Your text to embed" },
     ModelId: "text-embedding-3-small");
 
 var embedding = await embeddingModel.EmbedAsync(embeddingRequest);
@@ -159,40 +160,44 @@ Console.WriteLine($"Embedding dimension: {embedding.Vectors[0].Length}");
 ### Document Ingestion
 
 ```csharp
+using Bipins.AI.Core.Ingestion;
+using Bipins.AI.Ingestion;
+
 var pipeline = serviceProvider.GetRequiredService<IngestionPipeline>();
 
 var options = new IndexOptions(
-    tenantId: "tenant1",
-    docId: "doc1",
-    versionId: "v1.0.0",
-    collectionName: "documents",
-    chunkStrategy: ChunkStrategy.FixedSize,
-    chunkOptions: new ChunkOptions(
-        maxChunkSize: 1000,
-        overlap: 200));
+    TenantId: "tenant1",
+    DocId: "doc1",
+    VersionId: "v1.0.0",
+    CollectionName: "documents");
 
-var result = await pipeline.IngestAsync("path/to/document.md", options);
+var chunkOptions = new ChunkOptions(MaxSize: 1000, Overlap: 200, Strategy: ChunkStrategy.FixedSize);
+
+var result = await pipeline.IngestAsync("path/to/document.md", options, chunkOptions);
 Console.WriteLine($"Indexed {result.ChunksIndexed} chunks");
 ```
 
 ### RAG (Retrieval-Augmented Generation)
 
 ```csharp
+using Bipins.AI.Core.Models;
+using Bipins.AI.Core.Rag;
+
 var retriever = serviceProvider.GetRequiredService<IRetriever>();
 var composer = serviceProvider.GetRequiredService<IRagComposer>();
 var chatModel = serviceProvider.GetRequiredService<IChatModel>();
 
 // Retrieve relevant chunks
 var retrieveRequest = new RetrieveRequest(
-    query: "What is machine learning?",
-    tenantId: "tenant1",
-    topK: 5);
+    "What is machine learning?",
+    "tenant1",
+    TopK: 5);
 
 var retrieved = await retriever.RetrieveAsync(retrieveRequest);
 
 // Compose augmented request
 var chatRequest = new ChatRequest(
-    Messages: new[] { new Message(MessageRole.User, "What is machine learning?") });
+    new[] { new Message(MessageRole.User, "What is machine learning?") });
 
 var augmentedRequest = composer.Compose(chatRequest, retrieved);
 
@@ -204,16 +209,18 @@ Console.WriteLine(response.Content);
 ### Vector Store Operations
 
 ```csharp
+using Bipins.AI.Vector;
+
 var vectorStore = serviceProvider.GetRequiredService<IVectorStore>();
 
 // Upsert vectors
 var upsertRequest = new VectorUpsertRequest(
-    Records: new[]
+    new[]
     {
         new VectorRecord(
-            Id: "doc1",
-            Vector: new ReadOnlyMemory<float>(new float[] { 0.1f, 0.2f, 0.3f }),
-            Text: "Sample document text",
+            "doc1",
+            new ReadOnlyMemory<float>(new float[] { 0.1f, 0.2f, 0.3f }),
+            "Sample document text",
             Metadata: new Dictionary<string, object> { ["source"] = "test" },
             TenantId: "tenant1",
             VersionId: "v1")
@@ -224,13 +231,13 @@ await vectorStore.UpsertAsync(upsertRequest);
 
 // Query vectors
 var queryRequest = new VectorQueryRequest(
-    QueryVector: new ReadOnlyMemory<float>(new float[] { 0.1f, 0.2f, 0.3f }),
+    new ReadOnlyMemory<float>(new float[] { 0.1f, 0.2f, 0.3f }),
     TopK: 5,
-    TenantId: "tenant1",
-    CollectionName: "documents",
+    "tenant1",
     Filter: new VectorFilterBuilder()
         .Equal("source", "test")
-        .Build());
+        .Build(),
+    CollectionName: "documents");
 
 var results = await vectorStore.QueryAsync(queryRequest);
 
@@ -291,6 +298,10 @@ await foreach (var chunk in agent.ExecuteStreamAsync(request))
 ### Custom Tools
 
 ```csharp
+using System.Text.Json;
+using Bipins.AI.Agents.Tools;
+using Bipins.AI.Core.Models;
+
 // Implement a custom tool
 public class WeatherTool : IToolExecutor
 {
@@ -306,7 +317,7 @@ public class WeatherTool : IToolExecutor
         required = new[] { "location" }
     });
 
-    public async Task<ToolExecutionResult> ExecuteAsync(ToolCall toolCall, CancellationToken cancellationToken)
+    public async Task<ToolExecutionResult> ExecuteAsync(ToolCall toolCall, CancellationToken cancellationToken = default)
     {
         var location = toolCall.Arguments.GetProperty("location").GetString();
         // Implement weather API call
@@ -502,7 +513,7 @@ services
 // Content moderation is automatically applied to all LLM requests and responses
 var llmProvider = serviceProvider.GetRequiredService<ILLMProvider>();
 var response = await llmProvider.ChatAsync(new ChatRequest(
-    Messages: new[] { new Message(MessageRole.User, "Hello") }));
+    new[] { new Message(MessageRole.User, "Hello") }));
 
 // Check safety info
 if (response.Safety?.Flagged == true)
@@ -599,7 +610,7 @@ var resiliencePolicy = serviceProvider.GetRequiredService<IResiliencePolicy>();
 var response = await resiliencePolicy.ExecuteAsync(async () =>
 {
     return await llmProvider.ChatAsync(new ChatRequest(
-        Messages: new[] { new Message(MessageRole.User, "Hello") }));
+        new[] { new Message(MessageRole.User, "Hello") }));
 });
 ```
 
@@ -719,7 +730,15 @@ d) **Bipins.AI.AgentSamples** - An interactive console application demonstrating
 
 e) **Bipins.AI.Guardian** - A simple MVC web application demonstrating safety, validation, and resilience features. This sample showcases content moderation with automatic detection of unsafe content, FluentValidation for request validation, JSON Schema validation for response structure, and Polly-based resilience policies with retry and timeout handling. The application provides a clean web interface for testing these features with OpenAI chat completions, displaying moderation status, validation results, and retry information.
 
-e) **Bipins.AI.Guardian** - A simple MVC web application demonstrating safety, validation, and resilience features. This sample showcases content moderation with automatic detection of unsafe content, FluentValidation for request validation, JSON Schema validation for response structure, and Polly-based resilience policies with retry and timeout handling. The application provides a clean web interface for testing these features with OpenAI chat completions, displaying moderation status, validation results, and retry information.
+## Building from source
+
+Requires the [.NET 8 SDK](https://dotnet.microsoft.com/download). From the repository root, run:
+
+```bash
+./build.sh
+```
+
+The build uses [Cake](https://cakebuild.net/); the script installs the .NET SDK and Cake if needed, then runs the build. To run specific targets (e.g. tests), pass them as arguments: `./build.sh --target=Test`.
 
 ## License
 

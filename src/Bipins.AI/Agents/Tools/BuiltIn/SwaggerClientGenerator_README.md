@@ -17,6 +17,10 @@ The `SwaggerClientGeneratorTool` is an `IToolExecutor` implementation that can b
 - ? **XML Documentation**: Comprehensive code documentation
 - ? **.NET 8 Features**: Record types, nullable reference types, file-scoped namespaces
 
+## Related: Sample App Generator
+
+After generating a client, use **ApiClientSampleAppGeneratorTool** (`api_client_sample_app_generator`) to create a runnable console app: it adds a client `.csproj`, a sample project with `Program.cs`, and uses the LLM to generate code that correctly runs the generated API client. See [ApiClientSampleAppGenerator_README.md](./ApiClientSampleAppGenerator_README.md).
+
 ## Registration
 
 Add the tool to your agent configuration:
@@ -27,6 +31,7 @@ services
     .AddOpenAI(options => { ... })
     .AddBipinsAIAgents()
     .AddSwaggerClientGeneratorTool()  // Register the tool
+    .AddApiClientSampleAppGeneratorTool()  // Optional: runnable sample app for generated client
     .AddAgent("CodeGenAgent", options =>
     {
         options.Name = "Code Generation Assistant";

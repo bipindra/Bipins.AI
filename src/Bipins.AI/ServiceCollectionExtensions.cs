@@ -386,6 +386,17 @@ public static class ServiceCollectionExtensions
     }
 
     /// <summary>
+    /// Registers the API client sample app generator tool.
+    /// Creates a runnable console app for a generated API client: adds client .csproj, sample project, and LLM-generated Program.cs.
+    /// Requires IOpenApiParser, IFileWriter (e.g. from AddSwaggerClientGeneratorTool), and ILLMProvider (e.g. from AddOpenAI).
+    /// </summary>
+    public static IBipinsAIBuilder AddApiClientSampleAppGeneratorTool(this IBipinsAIBuilder builder)
+    {
+        builder.Services.AddSingleton<IToolExecutor, ApiClientSampleAppGeneratorTool>();
+        return builder;
+    }
+
+    /// <summary>
     /// Configures agent memory to use vector store (requires IVectorStore and IEmbeddingModel).
     /// </summary>
     public static IBipinsAIBuilder UseVectorStoreMemory(this IBipinsAIBuilder builder, string collectionName = "agent_memory")
