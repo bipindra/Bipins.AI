@@ -70,12 +70,12 @@ public class AuthenticationTests
     }
 
     [Fact]
-    public void InMemoryApiKeyValidator_ValidateAsync_ValidKey_ReturnsSuccess()
+    public async Task InMemoryApiKeyValidator_ValidateAsync_ValidKey_ReturnsSuccess()
     {
         var logger = new Mock<ILogger<InMemoryApiKeyValidator>>();
         var validator = new InMemoryApiKeyValidator(logger.Object);
 
-        var result = validator.ValidateAsync("test-api-key").Result;
+        var result = await validator.ValidateAsync("test-api-key");
 
         Assert.True(result.IsValid);
         Assert.Equal("default", result.TenantId);
@@ -83,25 +83,25 @@ public class AuthenticationTests
     }
 
     [Fact]
-    public void InMemoryApiKeyValidator_ValidateAsync_InvalidKey_ReturnsFailure()
+    public async Task InMemoryApiKeyValidator_ValidateAsync_InvalidKey_ReturnsFailure()
     {
         var logger = new Mock<ILogger<InMemoryApiKeyValidator>>();
         var validator = new InMemoryApiKeyValidator(logger.Object);
 
-        var result = validator.ValidateAsync("invalid-key").Result;
+        var result = await validator.ValidateAsync("invalid-key");
 
         Assert.False(result.IsValid);
     }
 
     [Fact]
-    public void InMemoryApiKeyValidator_AddApiKey_AddsKey()
+    public async Task InMemoryApiKeyValidator_AddApiKey_AddsKey()
     {
         var logger = new Mock<ILogger<InMemoryApiKeyValidator>>();
         var validator = new InMemoryApiKeyValidator(logger.Object);
 
         validator.AddApiKey("custom-key", "tenant1", "key1", new[] { "Admin" });
 
-        var result = validator.ValidateAsync("custom-key").Result;
+        var result = await validator.ValidateAsync("custom-key");
 
         Assert.True(result.IsValid);
         Assert.Equal("tenant1", result.TenantId);

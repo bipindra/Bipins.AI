@@ -134,9 +134,9 @@ public class AnthropicChatModelStreaming : IChatModelStreaming
 #endif
         using var reader = new StreamReader(stream);
 
-        while (!reader.EndOfStream && !cancellationToken.IsCancellationRequested)
+        string? line;
+        while ((line = await reader.ReadLineAsync()) != null && !cancellationToken.IsCancellationRequested)
         {
-            var line = await reader.ReadLineAsync();
             if (string.IsNullOrWhiteSpace(line))
                 continue;
 

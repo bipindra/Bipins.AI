@@ -110,9 +110,9 @@ public class ContentModerationMiddleware
                         }
 
                         // Add safety info to response headers
-                        context.Response.Headers.Add("X-Content-Moderated", "true");
-                        context.Response.Headers.Add("X-Content-Safety-Level", 
-                            moderationResult.Violations.Max(v => v.Severity).ToString());
+                        context.Response.Headers["X-Content-Moderated"] = "true";
+                        context.Response.Headers["X-Content-Safety-Level"] =
+                            moderationResult.Violations.Max(v => v.Severity).ToString();
                     }
                 }
 

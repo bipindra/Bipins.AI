@@ -102,7 +102,7 @@ public class MetricsCollector
     /// <summary>
     /// Records token usage.
     /// </summary>
-    public void RecordTokenUsage(Usage usage, string? modelId = null, string? tenantId = null)
+    public void RecordTokenUsage(Usage? usage, string? modelId = null, string? tenantId = null)
     {
         if (usage == null) return;
 

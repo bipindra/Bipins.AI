@@ -8,10 +8,10 @@ public class MessageRoleTests
     [Fact]
     public void MessageRole_Values_AreDefined()
     {
-        Assert.NotNull(MessageRole.User);
-        Assert.NotNull(MessageRole.Assistant);
-        Assert.NotNull(MessageRole.System);
-        Assert.NotNull(MessageRole.Tool);
+        _ = MessageRole.User;
+        _ = MessageRole.Assistant;
+        _ = MessageRole.System;
+        _ = MessageRole.Tool;
     }
 
     [Fact]

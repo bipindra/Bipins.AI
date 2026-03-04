@@ -37,7 +37,7 @@ public class PineconeVectorIntegrationTests : IClassFixture<IntegrationTestFixtu
                     Id: Guid.NewGuid().ToString("N"),
                     Vector: vector,
                     Text: "integration test vector",
-                    Metadata: new Dictionary<string, object?>
+                    Metadata: new Dictionary<string, object>
                     {
                         ["source"] = "integration-test"
                     },

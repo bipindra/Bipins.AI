@@ -230,7 +230,7 @@ public class CostExplorerServiceEdgeCaseTests
                     {
                         new Group
                         {
-                            Keys = new List<string> { null, null }, // Null keys
+                            Keys = new List<string> { null!, null! }, // Null keys (edge case test)
                             Metrics = new Dictionary<string, MetricValue>
                             {
                                 { "BlendedCost", new MetricValue { Amount = "100.50", Unit = "USD" } }

@@ -87,7 +87,7 @@ public class BedrockIntegrationTests : IClassFixture<IntegrationTestFixture>
         Assert.NotNull(response);
         Assert.NotNull(response.Content);
         // Response should be in uppercase (or at least contain uppercase letters)
-        Assert.True(response.Content.Any(char.IsUpper));
+        Assert.Contains(response.Content, c => char.IsUpper(c));
     }
 
     [Fact(Skip = "Requires AWS Bedrock access with Anthropic model enabled")]
