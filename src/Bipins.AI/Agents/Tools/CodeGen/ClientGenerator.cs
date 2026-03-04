@@ -43,7 +43,7 @@ public class ClientGenerator : IClientGenerator
         {
             try
             {
-                var clientName = $"{tagGroup.Key}Client";
+                var clientName = TypeMapper.ToPascalCase(tagGroup.Key) + "Client";
 
                 // Generate interface
                 if (options.GenerateInterfaces)
@@ -162,6 +162,7 @@ public class ClientGenerator : IClientGenerator
         var sb = new StringBuilder();
         
         AppendFileHeader(sb);
+        sb.AppendLine("#nullable enable");
         sb.AppendLine($"namespace {namespaceName}.Clients;");
         sb.AppendLine();
         sb.AppendLine("using System.Net.Http.Json;");
@@ -233,6 +234,7 @@ public class ClientGenerator : IClientGenerator
         var methodName = GetMethodName(op, options);
         var returnType = GetReturnType(op);
         var parameters = GetParameters(op);
+        var hasBody = GetRequestBodyType(op) != null;
         
         sb.AppendLine($"    public async Task<{returnType}> {methodName}({parameters}CancellationToken cancellationToken = default)");
         sb.AppendLine("    {");
@@ -240,7 +242,7 @@ public class ClientGenerator : IClientGenerator
         sb.AppendLine("        {");
         sb.AppendLine($"            var requestUri = \"{op.Path}\";");
         sb.AppendLine();
-        sb.AppendLine($"            using var response = await _httpClient.{GetHttpMethod(op.Method)}Async(requestUri, cancellationToken);");
+        sb.AppendLine(GetHttpCallExpression(op, hasBody));
         sb.AppendLine("            response.EnsureSuccessStatusCode();");
         sb.AppendLine();
         
@@ -269,6 +271,22 @@ public class ClientGenerator : IClientGenerator
         return sb.ToString();
     }
 
+    private string GetHttpCallExpression(OperationInfo op, bool hasBody)
+    {
+        var method = op.Method;
+        var methodName = GetHttpMethod(method);
+        if (hasBody && (method == OperationType.Post || method == OperationType.Put || method == OperationType.Patch))
+        {
+            var sendMethod = method == OperationType.Post ? "PostAsJsonAsync" : method == OperationType.Put ? "PutAsJsonAsync" : "PostAsJsonAsync";
+            if (method == OperationType.Patch)
+                sendMethod = "PatchAsJsonAsync";
+            return $"            using var response = await _httpClient.{sendMethod}(requestUri, body, cancellationToken);";
+        }
+        if (method == OperationType.Post || method == OperationType.Put || method == OperationType.Patch)
+            return $"            using var response = await _httpClient.{methodName}Async(requestUri, (System.Net.Http.HttpContent?)null, cancellationToken);";
+        return $"            using var response = await _httpClient.{methodName}Async(requestUri, cancellationToken);";
+    }
+
     private string GenerateDependencyInjectionSetup(
         string namespaceName,
         List<string> clientTags,
@@ -290,7 +308,7 @@ public class ClientGenerator : IClientGenerator
         
         foreach (var tag in clientTags)
         {
-            var clientName = $"{tag}Client";
+            var clientName = TypeMapper.ToPascalCase(tag) + "Client";
             sb.AppendLine($"        services.AddHttpClient<I{clientName}, {clientName}>(client =>");
             sb.AppendLine("        {");
             sb.AppendLine("            client.BaseAddress = new Uri(baseUrl);");
@@ -331,9 +349,26 @@ public class ClientGenerator : IClientGenerator
         return "string";
     }
 
+    private string? GetRequestBodyType(OperationInfo op)
+    {
+        var body = op.Operation.RequestBody;
+        if (body?.Content == null || body.Content.Count == 0)
+            return null;
+        var jsonContent = body.Content.FirstOrDefault(c =>
+            c.Key.Equals("application/json", StringComparison.OrdinalIgnoreCase));
+        if (jsonContent.Value?.Schema == null)
+            return null;
+        var schema = jsonContent.Value.Schema;
+        if (schema.Reference != null)
+            return TypeMapper.GetTypeNameFromReference(schema.Reference.Id);
+        return TypeMapper.MapToCSharpType(schema);
+    }
+
     private string GetParameters(OperationInfo op)
     {
-        // Simplified - just return empty for now
+        var bodyType = GetRequestBodyType(op);
+        if (bodyType != null)
+            return $"{bodyType} body, ";
         return "";
     }
 

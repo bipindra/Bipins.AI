@@ -1,4 +1,5 @@
 using System.Text;
+using Bipins.AI.Agents.Tools.CodeGen;
 using Microsoft.OpenApi.Models;
 
 namespace Bipins.AI.Samples.SwaggerAutoGen;
@@ -184,10 +185,11 @@ public class SolutionStructureGenerator
 
     private async Task WriteConsoleProgramAsync(string consoleDir, string solutionName, string namespaceName, string baseUrl, List<string> clientTags, CancellationToken ct)
     {
-        var firstClient = clientTags.Count > 0 ? $"{clientTags[0]}Client" : "DefaultClient";
+        var firstClient = clientTags.Count > 0 ? TypeMapper.ToPascalCase(clientTags[0]) + "Client" : "DefaultClient";
         var ns = namespaceName;
         var content = $@"using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using {ns};
 using {ns}.Clients;
 
 var host = Host.CreateDefaultBuilder(args)
@@ -247,7 +249,7 @@ Console.WriteLine(""Client type: I{firstClient}. Add your API calls in Program.c
         sb.AppendLine("{");
         if (clientTags.Count > 0)
         {
-            var clientName = $"{clientTags[0]}Client";
+            var clientName = TypeMapper.ToPascalCase(clientTags[0]) + "Client";
             sb.AppendLine($"    [Fact]");
             sb.AppendLine($"    public void {clientName}_CanBeConstructed()");
             sb.AppendLine("    {");
@@ -291,6 +293,7 @@ Console.WriteLine(""Client type: I{firstClient}. Add your API calls in Program.c
     {
         var ns = namespaceName;
         var sb = new StringBuilder();
+        sb.AppendLine("using System;");
         sb.AppendLine("using System.Net.Http;");
         sb.AppendLine("using Microsoft.Extensions.Logging.Abstractions;");
         sb.AppendLine($"using {ns}.Clients;");
@@ -305,7 +308,7 @@ Console.WriteLine(""Client type: I{firstClient}. Add your API calls in Program.c
         sb.AppendLine();
         if (clientTags.Count > 0)
         {
-            var clientName = $"{clientTags[0]}Client";
+            var clientName = TypeMapper.ToPascalCase(clientTags[0]) + "Client";
             sb.AppendLine("    [Fact(Skip = \"Requires running API. Remove Skip and call a method on the client to run.\")]");
             sb.AppendLine($"    public void {clientName}_CanBeConstructed_WithHttpClient()");
             sb.AppendLine("    {");
