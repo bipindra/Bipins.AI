@@ -130,6 +130,8 @@ public class ClientGenerator : IClientGenerator
         AppendFileHeader(sb);
         sb.AppendLine($"namespace {namespaceName}.Clients;");
         sb.AppendLine();
+        sb.AppendLine($"using {namespaceName}.Models;");
+        sb.AppendLine();
         
         if (options.IncludeXmlDocs)
         {

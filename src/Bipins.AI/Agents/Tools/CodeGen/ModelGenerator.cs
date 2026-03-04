@@ -136,8 +136,8 @@ public class ModelGenerator : IModelGenerator
                 // JsonPropertyName attribute
                 sb.AppendLine($"    [JsonPropertyName(\"{property.Key}\")]");
 
-                // Property declaration
-                var defaultValue = isRequired && !propertyType.EndsWith("?") ? " = default!;" : ";";
+                // Property declaration (no semicolon after } - CS1597; use "" for optional, " = default!;" for required)
+                var defaultValue = isRequired && !propertyType.EndsWith("?") ? " = default!;" : "";
                 sb.AppendLine($"    public {propertyType} {propertyName} {{ get; init; }}{defaultValue}");
 
                 propertyIndex++;
