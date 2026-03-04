@@ -32,10 +32,7 @@ dotnet build src/Bipins.AI/Bipins.AI.csproj
 
 ### Step 3: Continue with Implementation
 
-Once the build succeeds, follow the **Cursor AI Implementation Plan**:
-?? `docs/tools/SwaggerClientGenerator_CursorAI_Plan.md`
-
-Start with **Phase 2, Prompt 2.1**: Implement `OpenApiParser.cs`
+Once the build succeeds, see **docs/TOOLS.md** for agent tools overview and the Swagger client generator README in this repo for implementation details.
 
 ## ?? What's Been Created (Phase 1)
 
@@ -54,10 +51,7 @@ Start with **Phase 2, Prompt 2.1**: Implement `OpenApiParser.cs`
 
 ### ?? Documentation Files
 1. `src/Bipins.AI/Agents/Tools/BuiltIn/SwaggerClientGenerator_README.md`
-2. `docs/tools/SwaggerClientGenerator_CursorAI_Plan.md`
-3. `docs/tools/SwaggerClientGenerator_Summary.md`
-4. `docs/tools/SwaggerClientGenerator_QuickRef.md`
-5. `docs/tools/SwaggerClientGenerator_Diagrams.md`
+2. `docs/TOOLS.md` (agent tools overview and quick start)
 
 ## ?? Quick Start
 
@@ -133,7 +127,7 @@ Reference existing code patterns from:
 
 - **Build Issues**: Ensure packages are added to the correct project
 - **Cursor AI**: Reference the Cursor AI plan for step-by-step prompts
-- **Questions**: Check the comprehensive documentation in `docs/tools/`
+- **Questions**: See `docs/TOOLS.md` and the tool READMEs in `src/Bipins.AI/Agents/Tools/BuiltIn/`
 
 ---
 

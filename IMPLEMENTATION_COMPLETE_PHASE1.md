@@ -28,11 +28,9 @@ src/Bipins.AI/Agents/Tools/
     ??? IAuthGenerator.cs                       [Interface] ?
     ??? IFileWriter.cs                          [Interface] ?
 
-docs/tools/
-??? SwaggerClientGenerator_CursorAI_Plan.md    [10 phases, 50+ prompts] ?
-??? SwaggerClientGenerator_Summary.md          [Overview & status] ?
-??? SwaggerClientGenerator_QuickRef.md         [Quick reference] ?
-??? SwaggerClientGenerator_Diagrams.md         [7 Mermaid diagrams] ?
+docs/
+??? README.md                                  [Docs index] ?
+??? TOOLS.md                                   [Agent tools overview & quick start] ?
 
 BUILD_INSTRUCTIONS.md                           [Setup guide] ?
 ```
@@ -68,7 +66,7 @@ Phase 10: Documentation             ? PENDING
    ```
 
 3. **Start Cursor AI Implementation** (8-12 hours)
-   - Open `docs/tools/SwaggerClientGenerator_CursorAI_Plan.md`
+   - Open `docs/TOOLS.md` and the Swagger client generator README in `src/Bipins.AI/Agents/Tools/BuiltIn/`
    - Follow Prompt 2.1 onwards
    - Implement one phase at a time
 
@@ -133,18 +131,18 @@ C:\Projects\MyApp\PetStore.Client\
 ## ?? Documentation
 
 ### For Developers
-- **Implementation Plan**: `docs/tools/SwaggerClientGenerator_CursorAI_Plan.md`
+- **Tools overview**: `docs/TOOLS.md`
   - 10 phases with detailed prompts
   - Step-by-step Cursor AI instructions
   - Code examples and requirements
 
-- **Architecture Diagrams**: `docs/tools/SwaggerClientGenerator_Diagrams.md`
+- **Swagger Client Generator**: `src/Bipins.AI/Agents/Tools/BuiltIn/SwaggerClientGenerator_README.md`
   - System architecture
   - Sequence diagrams
   - Type mapping flowcharts
   - SOLID principles visualization
 
-- **Quick Reference**: `docs/tools/SwaggerClientGenerator_QuickRef.md`
+- **API Client Sample App Generator**: `src/Bipins.AI/Agents/Tools/BuiltIn/ApiClientSampleAppGenerator_README.md`
   - One-page cheat sheet
   - Quick start commands
   - Common patterns
@@ -156,7 +154,7 @@ C:\Projects\MyApp\PetStore.Client\
   - Usage examples
   - Generated code examples
 
-- **Summary**: `docs/tools/SwaggerClientGenerator_Summary.md`
+- **Docs index**: `docs/README.md`
   - Overview
   - Progress tracker
   - Success criteria
@@ -297,7 +295,7 @@ See `BUILD_INSTRUCTIONS.md`
 
 ### Step 2: Open Cursor AI
 Load these files:
-- `docs/tools/SwaggerClientGenerator_CursorAI_Plan.md`
+- `docs/TOOLS.md`
 - `src/Bipins.AI/Agents/Tools/BuiltIn/SwaggerClientGeneratorTool.cs`
 - `src/Bipins.AI/Agents/Tools/CodeGen/IOpenApiParser.cs`
 

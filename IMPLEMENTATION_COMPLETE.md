@@ -324,10 +324,9 @@ Future improvements you can add:
 All documentation is available:
 
 - **User Guide**: `src/Bipins.AI/Agents/Tools/BuiltIn/SwaggerClientGenerator_README.md`
-- **Implementation Plan**: `docs/tools/SwaggerClientGenerator_CursorAI_Plan.md`
-- **Summary**: `docs/tools/SwaggerClientGenerator_Summary.md`
-- **Quick Reference**: `docs/tools/SwaggerClientGenerator_QuickRef.md`
-- **Architecture Diagrams**: `docs/tools/SwaggerClientGenerator_Diagrams.md`
+- **Tools overview**: `docs/TOOLS.md`
+- **Swagger Client Generator**: `src/Bipins.AI/Agents/Tools/BuiltIn/SwaggerClientGenerator_README.md`
+- **API Client Sample App Generator**: `src/Bipins.AI/Agents/Tools/BuiltIn/ApiClientSampleAppGenerator_README.md`
 
 ## ?? Success!
 

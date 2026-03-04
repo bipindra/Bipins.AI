@@ -251,7 +251,7 @@ services.AddPetStoreClient(options =>
 
 ## Development Roadmap
 
-Follow the [comprehensive plan](../../../docs/SwaggerClientGenerator_Plan.md) for step-by-step implementation using Cursor AI.
+See [docs/TOOLS.md](../../../docs/TOOLS.md) for agent tools overview and quick start.
 
 ### Quick Start with Cursor AI
 
