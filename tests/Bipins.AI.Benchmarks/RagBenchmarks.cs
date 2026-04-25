@@ -6,6 +6,7 @@ using Bipins.AI.Core.Rag;
 using Bipins.AI.Vector;
 using Bipins.AI.Runtime.Rag;
 using Bipins.AI.Runtime.Routing;
+using Bipins.AI.SemanticKernel;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 
@@ -69,7 +70,9 @@ public class RagBenchmarks
             _routerMock.Object,
             _vectorStoreMock.Object);
 
-        _composer = new DefaultRagComposer(NullLogger<DefaultRagComposer>.Instance);
+        _composer = new DefaultRagComposer(
+            NullLogger<DefaultRagComposer>.Instance,
+            new DefaultSemanticKernelBridge());
     }
 
     [Benchmark]

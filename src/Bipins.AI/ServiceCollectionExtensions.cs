@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Bipins.AI.Core;
 using Bipins.AI.Core.DependencyInjection;
 using Bipins.AI.Core.Ingestion;
@@ -15,6 +16,7 @@ using Bipins.AI.Runtime.Routing;
 using Bipins.AI.Runtime.Pipeline;
 using Bipins.AI.Runtime.Rag;
 using Bipins.AI.Runtime.CostTracking;
+using Bipins.AI.Orchestration;
 using Bipins.AI.Ingestion;
 using Bipins.AI.Ingestion.Strategies;
 using Bipins.AI.Providers;
@@ -35,6 +37,7 @@ using Bipins.AI.Safety;
 using Bipins.AI.Safety.Azure;
 using Bipins.AI.Resilience;
 using Bipins.AI.Validation;
+using Bipins.AI.SemanticKernel;
 using Microsoft.Extensions.Logging;
 
 namespace Bipins.AI;
@@ -54,7 +57,22 @@ public static class ServiceCollectionExtensions
             services.Configure(configure);
         }
 
+        services.Configure<SemanticKernelOptions>(_ => { });
+        services.TryAddSingleton<ISemanticKernelBridge, DefaultSemanticKernelBridge>();
         return new BipinsAIBuilder(services);
+    }
+
+    /// <summary>
+    /// Adds Semantic Kernel feature-flag options.
+    /// </summary>
+    public static IBipinsAIBuilder AddSemanticKernel(this IBipinsAIBuilder builder, Action<SemanticKernelOptions>? configure = null)
+    {
+        if (configure != null)
+        {
+            builder.Services.Configure(configure);
+        }
+
+        return builder;
     }
 
     /// <summary>
@@ -93,6 +111,7 @@ public static class ServiceCollectionExtensions
         // Register cost tracking
         services.AddSingleton<ICostCalculator, DefaultCostCalculator>();
         services.AddSingleton<ICostTracker, InMemoryCostTracker>();
+        services.AddSingleton<IChatOrchestrationService, DefaultChatOrchestrationService>();
 
         return services;
     }
@@ -261,10 +280,14 @@ public static class ServiceCollectionExtensions
     /// </summary>
     public static IBipinsAIBuilder AddBipinsAIAgents(this IBipinsAIBuilder builder, Action<AgentOptions>? configureDefault = null)
     {
+        builder.Services.AddSingleton<IConversationHistoryReducer, DefaultConversationHistoryReducer>();
+
         // Register tool registry - will be populated when tools are registered
         builder.Services.AddSingleton<IToolRegistry>(sp =>
         {
-            var registry = new DefaultToolRegistry(sp.GetService<ILogger<DefaultToolRegistry>>());
+            var registry = new DefaultToolRegistry(
+                sp.GetService<ISemanticKernelBridge>(),
+                sp.GetService<ILogger<DefaultToolRegistry>>());
             // Register all IToolExecutor instances
             var tools = sp.GetServices<IToolExecutor>();
             foreach (var tool in tools)
@@ -288,10 +311,26 @@ public static class ServiceCollectionExtensions
         });
 
         // Register default planner (LLM-based)
-        builder.Services.AddSingleton<IAgentPlanner, LLMPlanner>();
+        builder.Services.AddSingleton<LLMPlanner>();
+        builder.Services.AddSingleton<SemanticKernelPlanner>();
+        builder.Services.AddSingleton<IAgentPlanner>(sp =>
+        {
+            var skOptions = sp.GetRequiredService<IOptions<SemanticKernelOptions>>().Value;
+            return skOptions.EnablePlanner
+                ? sp.GetRequiredService<SemanticKernelPlanner>()
+                : sp.GetRequiredService<LLMPlanner>();
+        });
 
         // Register default memory (in-memory, can be overridden)
-        builder.Services.AddSingleton<IAgentMemory, InMemoryAgentMemory>();
+        builder.Services.AddSingleton<InMemoryAgentMemory>();
+        builder.Services.AddSingleton<SemanticKernelAgentMemory>();
+        builder.Services.AddSingleton<IAgentMemory>(sp =>
+        {
+            var skOptions = sp.GetRequiredService<IOptions<SemanticKernelOptions>>().Value;
+            return skOptions.EnableMemory
+                ? sp.GetRequiredService<SemanticKernelAgentMemory>()
+                : sp.GetRequiredService<InMemoryAgentMemory>();
+        });
 
         // Configure default agent options if provided
         if (configureDefault != null)
@@ -323,9 +362,10 @@ public static class ServiceCollectionExtensions
             var toolRegistry = sp.GetRequiredService<IToolRegistry>();
             var memory = sp.GetService<IAgentMemory>();
             var planner = sp.GetService<IAgentPlanner>();
+            var historyReducer = sp.GetService<IConversationHistoryReducer>();
             var logger = sp.GetService<ILogger<DefaultAgent>>();
 
-            return new DefaultAgent(agentId, options, llmProvider, toolRegistry, memory, planner, logger);
+            return new DefaultAgent(agentId, options, llmProvider, toolRegistry, memory, planner, historyReducer, logger);
         });
 
         return builder;

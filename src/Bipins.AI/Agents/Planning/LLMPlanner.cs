@@ -2,6 +2,7 @@ using System.Text.Json;
 using Bipins.AI.Agents.Memory;
 using Bipins.AI.Core.Models;
 using Bipins.AI.Providers;
+using Bipins.AI.SemanticKernel;
 using Microsoft.Extensions.Logging;
 using PlanStep = Bipins.AI.Agents.PlanStep;
 
@@ -13,14 +14,19 @@ namespace Bipins.AI.Agents.Planning;
 public class LLMPlanner : IAgentPlanner
 {
     private readonly ILLMProvider _llmProvider;
+    private readonly ISemanticKernelBridge _semanticKernelBridge;
     private readonly ILogger<LLMPlanner>? _logger;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="LLMPlanner"/> class.
     /// </summary>
-    public LLMPlanner(ILLMProvider llmProvider, ILogger<LLMPlanner>? logger = null)
+    public LLMPlanner(
+        ILLMProvider llmProvider,
+        ISemanticKernelBridge semanticKernelBridge,
+        ILogger<LLMPlanner>? logger = null)
     {
         _llmProvider = llmProvider;
+        _semanticKernelBridge = semanticKernelBridge;
         _logger = logger;
     }
 
@@ -78,13 +84,17 @@ public class LLMPlanner : IAgentPlanner
         {
             var response = await _llmProvider.ChatAsync(chatRequest, cancellationToken);
 
-            // Parse structured output
             if (response.StructuredOutput.HasValue)
             {
                 return ParsePlanFromJson(response.StructuredOutput.Value, request.Goal);
             }
 
-            // Fallback: try to parse from content
+            var parsed = StructuredOutputHelper.ExtractStructuredOutput(response.Content);
+            if (parsed.HasValue)
+            {
+                return ParsePlanFromJson(parsed.Value, request.Goal);
+            }
+
             return ParsePlanFromContent(response.Content, request.Goal);
         }
         catch (Exception ex)
@@ -96,36 +106,11 @@ public class LLMPlanner : IAgentPlanner
 
     private string BuildPlanningPrompt(AgentRequest request, IReadOnlyList<ToolDefinition> availableTools, AgentMemoryContext? context)
     {
-        var prompt = $"Goal: {request.Goal}\n\n";
-
-        if (!string.IsNullOrEmpty(request.Context))
-        {
-            prompt += $"Context: {request.Context}\n\n";
-        }
-
-        if (context != null && context.ConversationHistory.Count > 0)
-        {
-            prompt += "Previous conversation:\n";
-            foreach (var msg in context.ConversationHistory.TakeLast(10))
-            {
-                prompt += $"{msg.Role}: {msg.Content}\n";
-            }
-            prompt += "\n";
-        }
-
-        if (availableTools.Count > 0)
-        {
-            prompt += "Available tools:\n";
-            foreach (var tool in availableTools)
-            {
-                prompt += $"- {tool.Name}: {tool.Description}\n";
-            }
-            prompt += "\n";
-        }
-
-        prompt += "Create a detailed step-by-step plan to accomplish the goal. Include which tools to use and what parameters they need.";
-
-        return prompt;
+        return _semanticKernelBridge.RenderPlanningPrompt(new PlanningPromptTemplate(
+            request.Goal,
+            request.Context,
+            context?.ConversationHistory ?? Array.Empty<Message>(),
+            availableTools));
     }
 
     private AgentExecutionPlan ParsePlanFromJson(JsonElement json, string goal)

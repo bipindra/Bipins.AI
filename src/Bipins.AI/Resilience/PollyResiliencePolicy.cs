@@ -67,7 +67,8 @@ public class PollyResiliencePolicy : IResiliencePolicy
         // Build timeout policy
         if (options.Timeout != null)
         {
-            var timeoutPolicy = Policy.TimeoutAsync(options.Timeout.Timeout);
+            // Pessimistic: delegate may not observe cancellation (e.g. Func<Task>); Polly v8 optimistic timeout would not fire.
+            var timeoutPolicy = Policy.TimeoutAsync(options.Timeout.Timeout, TimeoutStrategy.Pessimistic);
             policy = policy.WrapAsync(timeoutPolicy);
         }
 

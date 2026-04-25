@@ -4,6 +4,7 @@ using Bipins.AI.Core.Rag;
 using Bipins.AI.Vector;
 using Bipins.AI.Runtime.Rag;
 using Bipins.AI.Runtime.Routing;
+using Bipins.AI.SemanticKernel;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
@@ -20,7 +21,7 @@ public class RagTests
     {
         _composerLogger = new Mock<ILogger<DefaultRagComposer>>();
         _retrieverLogger = new Mock<ILogger<VectorRetriever>>();
-        _composer = new DefaultRagComposer(_composerLogger.Object);
+        _composer = new DefaultRagComposer(_composerLogger.Object, new DefaultSemanticKernelBridge());
     }
 
     [Fact]

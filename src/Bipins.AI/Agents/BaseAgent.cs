@@ -17,6 +17,7 @@ public abstract class BaseAgent : IAgent
     protected readonly IToolRegistry _toolRegistry;
     protected readonly IAgentMemory? _memory;
     protected readonly IAgentPlanner? _planner;
+    protected readonly IConversationHistoryReducer? _historyReducer;
     protected readonly AgentOptions _options;
     protected readonly ILogger _logger;
 
@@ -30,6 +31,7 @@ public abstract class BaseAgent : IAgent
         IToolRegistry toolRegistry,
         IAgentMemory? memory = null,
         IAgentPlanner? planner = null,
+        IConversationHistoryReducer? historyReducer = null,
         ILogger? logger = null)
     {
         Id = id;
@@ -39,6 +41,7 @@ public abstract class BaseAgent : IAgent
         _toolRegistry = toolRegistry;
         _memory = memory;
         _planner = planner;
+        _historyReducer = historyReducer;
         _logger = logger ?? Microsoft.Extensions.Logging.Abstractions.NullLogger.Instance;
 
         Capabilities = AgentCapabilities.ToolExecution;
@@ -78,7 +81,10 @@ public abstract class BaseAgent : IAgent
         if (_memory != null && _options.EnableMemory && !string.IsNullOrEmpty(request.SessionId))
         {
             memoryContext = await _memory.LoadContextAsync(Id, request.SessionId, _options.MemoryOptions?.MaxConversationTurns ?? 50, cancellationToken);
-            conversationHistory.AddRange(memoryContext.ConversationHistory);
+            var reducedHistory = _options.EnableHistoryReduction && _historyReducer != null
+                ? _historyReducer.Reduce(memoryContext.ConversationHistory, _options.MemoryOptions)
+                : memoryContext.ConversationHistory;
+            conversationHistory.AddRange(reducedHistory);
         }
 
         // Add system prompt

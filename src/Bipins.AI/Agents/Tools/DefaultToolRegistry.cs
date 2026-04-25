@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Bipins.AI.Core.Models;
+using Bipins.AI.SemanticKernel;
 using Microsoft.Extensions.Logging;
 
 namespace Bipins.AI.Agents.Tools;
@@ -10,13 +11,17 @@ namespace Bipins.AI.Agents.Tools;
 public class DefaultToolRegistry : IToolRegistry
 {
     private readonly Dictionary<string, IToolExecutor> _tools = new();
+    private readonly ISemanticKernelBridge? _semanticKernelBridge;
     private readonly ILogger<DefaultToolRegistry>? _logger;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="DefaultToolRegistry"/> class.
     /// </summary>
-    public DefaultToolRegistry(ILogger<DefaultToolRegistry>? logger = null)
+    public DefaultToolRegistry(
+        ISemanticKernelBridge? semanticKernelBridge = null,
+        ILogger<DefaultToolRegistry>? logger = null)
     {
+        _semanticKernelBridge = semanticKernelBridge;
         _logger = logger;
     }
 
@@ -48,18 +53,20 @@ public class DefaultToolRegistry : IToolRegistry
     /// <inheritdoc />
     public IReadOnlyList<ToolDefinition> GetToolDefinitions()
     {
-        return _tools.Values
+        var definitions = _tools.Values
             .Select(t => new ToolDefinition(t.Name, t.Description, t.ParametersSchema))
             .ToList();
+        return _semanticKernelBridge?.MapTools(definitions) ?? definitions;
     }
 
     /// <inheritdoc />
     public IReadOnlyList<ToolDefinition> GetToolDefinitions(IReadOnlyList<string> toolNames)
     {
-        return toolNames
+        var definitions = toolNames
             .Where(name => _tools.ContainsKey(name))
             .Select(name => _tools[name])
             .Select(t => new ToolDefinition(t.Name, t.Description, t.ParametersSchema))
             .ToList();
+        return _semanticKernelBridge?.MapTools(definitions) ?? definitions;
     }
 }

@@ -73,7 +73,7 @@ public class PollyResiliencePolicyTests
             Bulkhead = new BulkheadOptions
             {
                 MaxParallelization = 2,
-                MaxQueuingActions = 1
+                MaxQueuingActions = 4
             }
         };
 

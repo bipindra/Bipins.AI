@@ -22,8 +22,9 @@ public class DefaultAgent : BaseAgent
         IToolRegistry toolRegistry,
         IAgentMemory? memory = null,
         IAgentPlanner? planner = null,
+        IConversationHistoryReducer? historyReducer = null,
         ILogger<DefaultAgent>? logger = null)
-        : base(id, options, llmProvider, toolRegistry, memory, planner, logger)
+        : base(id, options, llmProvider, toolRegistry, memory, planner, historyReducer, logger)
     {
     }
 

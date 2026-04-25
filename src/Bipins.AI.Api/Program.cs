@@ -19,6 +19,7 @@ using Bipins.AI.Runtime.Observability;
 using Bipins.AI.Runtime.Policies;
 using Bipins.AI.Runtime.Rag;
 using Bipins.AI.Runtime.Routing;
+using Bipins.AI.Orchestration;
 using Bipins.AI.Core.CostTracking;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Builder;
@@ -495,9 +496,7 @@ app.MapPost("/v1/ingest/batch", async (
 
 app.MapPost("/v1/chat/stream", async (
     HttpContext context,
-    IModelRouter router,
-    IRetriever retriever,
-    IRagComposer composer,
+    IChatOrchestrationService orchestrationService,
     JsonDocument request) =>
 {
     var tenantId = context.User.FindFirst("tenantId")?.Value ?? "default";
@@ -598,189 +597,54 @@ app.MapPost("/v1/chat/stream", async (
             null,
             structuredOutput);
 
-        // Retrieve relevant chunks (RAG)
-        RetrieveResult? retrieved = null;
-        try
+        await foreach (var streamEvent in orchestrationService.ExecuteStreamAsync(tenantId, chatRequest, context.RequestAborted))
         {
-            var retrieveRequest = new RetrieveRequest(
-                messages.Last().Content,
-                tenantId,
-                TopK: 5);
-
-            retrieved = await retriever.RetrieveAsync(retrieveRequest, context.RequestAborted);
-        }
-        catch (Exception ex)
-        {
-            await WriteSseEventAsync("error", new { error = $"Retrieval failed: {ex.Message}" }, context.RequestAborted);
-            return Results.Empty;
-        }
-
-        // Compose augmented request
-        var augmentedRequest = composer.Compose(chatRequest, retrieved!);
-
-        // Check quota
-        var estimatedTokens = augmentedRequest.Messages.Sum(m => m.Content?.Length ?? 0) / 4; // Rough estimate
-        var quotaEnforcer = context.RequestServices.GetRequiredService<ITenantQuotaEnforcer>();
-        if (!await quotaEnforcer.CanMakeChatRequestAsync(tenantId, estimatedTokens, context.RequestAborted))
-        {
-            await WriteSseEventAsync("error", new { error = "Quota exceeded for tenant" }, context.RequestAborted);
-            return Results.Empty;
-        }
-
-        // Generate streaming response
-        IChatModelStreaming? streamingModel = null;
-        try
-        {
-            var chatModel = await router.SelectChatModelAsync(tenantId, augmentedRequest, context.RequestAborted);
-            
-            // Check if model supports streaming
-            if (chatModel is not IChatModelStreaming model)
+            if (streamEvent.EventType == "complete")
             {
-                await WriteSseEventAsync("error", new { error = "Selected model does not support streaming" }, context.RequestAborted);
-                return Results.Empty;
+                var citations = (streamEvent.Retrieved?.Chunks ?? Array.Empty<RagChunk>())
+                    .Select(c => new Citation(c.SourceUri, c.DocId, c.Chunk.Id, c.Chunk.Text, c.Score))
+                    .ToList();
+                var modelProvider = !string.IsNullOrEmpty(streamEvent.ModelId)
+                    ? GetProviderFromModelId(streamEvent.ModelId)
+                    : "Unknown";
+                var telemetry = streamEvent.Usage != null && streamEvent.ElapsedMilliseconds.HasValue
+                    ? new ModelTelemetry(
+                        streamEvent.ModelId ?? "unknown",
+                        streamEvent.Usage.TotalTokens,
+                        streamEvent.ElapsedMilliseconds.Value,
+                        modelProvider)
+                    : null;
+
+                await WriteSseEventAsync("complete", new
+                {
+                    content = streamEvent.Content,
+                    usage = streamEvent.Usage,
+                    modelId = streamEvent.ModelId,
+                    finishReason = streamEvent.FinishReason,
+                    structuredOutput = streamEvent.ParsedStructuredOutput,
+                    citations,
+                    telemetry
+                }, context.RequestAborted);
+                continue;
             }
 
-            streamingModel = model;
-        }
-        catch (Exception ex)
-        {
-            await WriteSseEventAsync("error", new { error = $"Model selection failed: {ex.Message}" }, context.RequestAborted);
-            return Results.Empty;
-        }
-
-        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
-        var accumulatedContent = new System.Text.StringBuilder();
-        Usage? finalUsage = null;
-        string? finalModelId = null;
-        string? finalFinishReason = null;
-        IReadOnlyList<ToolCall>? finalToolCalls = null;
-
-        // Send start event
-        await WriteSseEventAsync("start", new { modelId = streamingModel.GetType().Name }, context.RequestAborted);
-
-        try
-        {
-            await foreach (var chunk in streamingModel.GenerateStreamAsync(augmentedRequest, context.RequestAborted))
+            if (streamEvent.EventType == "content")
             {
-                if (!string.IsNullOrEmpty(chunk.Content))
-                {
-                    accumulatedContent.Append(chunk.Content);
-                }
-
-                // Send content chunk
                 await WriteSseEventAsync("content", new
                 {
-                    content = chunk.Content,
-                    isComplete = chunk.IsComplete
+                    content = streamEvent.Content,
+                    isComplete = streamEvent.IsComplete
                 }, context.RequestAborted);
-
-                // Track final values
-                if (chunk.IsComplete)
-                {
-                    finalUsage = chunk.Usage;
-                    finalModelId = chunk.ModelId;
-                    finalFinishReason = chunk.FinishReason;
-                }
+                continue;
             }
 
-            stopwatch.Stop();
-
-            // Parse structured output if requested
-            JsonElement? parsedStructuredOutput = null;
-            if (chatRequest.StructuredOutput != null && accumulatedContent.Length > 0)
+            if (streamEvent.EventType == "error")
             {
-                try
-                {
-                    parsedStructuredOutput = StructuredOutputHelper.ExtractStructuredOutput(accumulatedContent.ToString());
-                    if (parsedStructuredOutput.HasValue)
-                    {
-                        var validated = StructuredOutputHelper.ParseAndValidate(
-                            accumulatedContent.ToString(),
-                            chatRequest.StructuredOutput.Schema);
-                        if (validated.HasValue)
-                        {
-                            parsedStructuredOutput = validated;
-                        }
-                    }
-                }
-                catch (Exception ex)
-                {
-                    await WriteSseEventAsync("warning", new { warning = $"Structured output parsing failed: {ex.Message}" }, context.RequestAborted);
-                }
+                await WriteSseEventAsync("error", new { error = streamEvent.Error ?? "Streaming failed" }, context.RequestAborted);
+                continue;
             }
 
-            // Record quota usage
-            var tokensUsed = finalUsage?.TotalTokens ?? estimatedTokens;
-            await quotaEnforcer.RecordChatRequestAsync(tenantId, tokensUsed, context.RequestAborted);
-
-            // Record cost
-            if (finalUsage != null && !string.IsNullOrEmpty(finalModelId))
-            {
-                var costCalculator = context.RequestServices.GetRequiredService<ICostCalculator>();
-                var costTracker = context.RequestServices.GetRequiredService<ICostTracker>();
-                var provider = GetProviderFromModelId(finalModelId);
-                var cost = costCalculator.CalculateChatCost(
-                    provider,
-                    finalModelId,
-                    finalUsage.PromptTokens,
-                    finalUsage.CompletionTokens);
-
-                var costRecord = new CostRecord(
-                    Id: Guid.NewGuid().ToString(),
-                    TenantId: tenantId,
-                    OperationType: CostOperationType.Chat,
-                    Provider: provider,
-                    ModelId: finalModelId,
-                    TokensUsed: finalUsage.TotalTokens,
-                    PromptTokens: finalUsage.PromptTokens,
-                    CompletionTokens: finalUsage.CompletionTokens,
-                    Cost: cost);
-
-                await costTracker.RecordCostAsync(costRecord, context.RequestAborted);
-            }
-
-            // Build citations
-            var citations = retrieved!.Chunks.Select(c => new Citation(
-                c.SourceUri,
-                c.DocId,
-                c.Chunk.Id,
-                c.Chunk.Text,
-                c.Score)).ToList();
-
-            var modelProvider = !string.IsNullOrEmpty(finalModelId) 
-                ? GetProviderFromModelId(finalModelId) 
-                : "Unknown";
-            var telemetry = finalUsage != null
-                ? new ModelTelemetry(
-                    finalModelId ?? "unknown",
-                    finalUsage.TotalTokens,
-                    stopwatch.ElapsedMilliseconds,
-                    modelProvider)
-                : null;
-
-            // Send completion event with metadata
-            await WriteSseEventAsync("complete", new
-            {
-                content = accumulatedContent.ToString(),
-                usage = finalUsage,
-                modelId = finalModelId,
-                finishReason = finalFinishReason,
-                toolCalls = finalToolCalls,
-                structuredOutput = parsedStructuredOutput,
-                citations = citations,
-                telemetry = telemetry
-            }, context.RequestAborted);
-
-            // Send done event
-            await WriteSseEventAsync("done", new { }, context.RequestAborted);
-        }
-        catch (Exception ex)
-        {
-            stopwatch.Stop();
-            activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
-            var logger = context.RequestServices.GetRequiredService<ILogger<Program>>();
-            logger.LogError(ex, "Error during streaming");
-            await WriteSseEventAsync("error", new { error = ex.Message }, context.RequestAborted);
+            await WriteSseEventAsync(streamEvent.EventType, new { }, context.RequestAborted);
         }
 
         return Results.Empty;
@@ -807,9 +671,7 @@ app.MapPost("/v1/chat/stream", async (
 
 app.MapPost("/v1/chat", async (
     HttpContext context,
-    IModelRouter router,
-    IRetriever retriever,
-    IRagComposer composer,
+    IChatOrchestrationService orchestrationService,
     JsonDocument request) =>
 {
     var tenantId = context.User.FindFirst("tenantId")?.Value ?? "default";
@@ -888,30 +750,7 @@ app.MapPost("/v1/chat", async (
             null,
             structuredOutput);
 
-        // Retrieve relevant chunks (RAG)
-        var retrieveRequest = new RetrieveRequest(
-            messages.Last().Content,
-            tenantId,
-            TopK: 5);
-
-        var retrieved = await retriever.RetrieveAsync(retrieveRequest, context.RequestAborted);
-
-        // Compose augmented request
-        var augmentedRequest = composer.Compose(chatRequest, retrieved);
-
-        // Check quota
-        var estimatedTokens = augmentedRequest.Messages.Sum(m => m.Content?.Length ?? 0) / 4; // Rough estimate
-        var quotaEnforcer = context.RequestServices.GetRequiredService<ITenantQuotaEnforcer>();
-        if (!await quotaEnforcer.CanMakeChatRequestAsync(tenantId, estimatedTokens, context.RequestAborted))
-        {
-            return Results.Json(new { error = "Quota exceeded for tenant" }, statusCode: 403);
-        }
-
-        // Generate response (streaming or non-streaming)
-        var chatModel = await router.SelectChatModelAsync(tenantId, augmentedRequest, context.RequestAborted);
-        
-        // If streaming is requested and model supports it, use streaming endpoint logic
-        if (stream && chatModel is IChatModelStreaming streamingModel)
+        if (stream)
         {
             // Set up SSE headers
             context.Response.ContentType = "text/event-stream";
@@ -927,216 +766,82 @@ app.MapPost("/v1/chat", async (
                 await context.Response.Body.FlushAsync(cancellationToken);
             }
 
-            var streamStopwatch = System.Diagnostics.Stopwatch.StartNew();
-            var accumulatedContent = new System.Text.StringBuilder();
-            Usage? streamFinalUsage = null;
-            string? streamFinalModelId = null;
-            string? streamFinalFinishReason = null;
-
-            await WriteSseEventAsync("start", new { }, context.RequestAborted);
-
-            try
+            await foreach (var streamEvent in orchestrationService.ExecuteStreamAsync(tenantId, chatRequest, context.RequestAborted))
             {
-                await foreach (var chunk in streamingModel.GenerateStreamAsync(augmentedRequest, context.RequestAborted))
+                if (streamEvent.EventType == "complete")
                 {
-                    if (!string.IsNullOrEmpty(chunk.Content))
-                    {
-                        accumulatedContent.Append(chunk.Content);
-                    }
+                    var streamCitations = (streamEvent.Retrieved?.Chunks ?? Array.Empty<RagChunk>())
+                        .Select(c => new Citation(c.SourceUri, c.DocId, c.Chunk.Id, c.Chunk.Text, c.Score))
+                        .ToList();
+                    var streamModelProvider = !string.IsNullOrEmpty(streamEvent.ModelId)
+                        ? GetProviderFromModelId(streamEvent.ModelId)
+                        : "Unknown";
+                    var streamTelemetry = streamEvent.Usage != null && streamEvent.ElapsedMilliseconds.HasValue
+                        ? new ModelTelemetry(
+                            streamEvent.ModelId ?? "unknown",
+                            streamEvent.Usage.TotalTokens,
+                            streamEvent.ElapsedMilliseconds.Value,
+                            streamModelProvider)
+                        : null;
 
+                    await WriteSseEventAsync("complete", new
+                    {
+                        content = streamEvent.Content,
+                        usage = streamEvent.Usage,
+                        modelId = streamEvent.ModelId,
+                        finishReason = streamEvent.FinishReason,
+                        structuredOutput = streamEvent.ParsedStructuredOutput,
+                        citations = streamCitations,
+                        telemetry = streamTelemetry
+                    }, context.RequestAborted);
+                    continue;
+                }
+
+                if (streamEvent.EventType == "content")
+                {
                     await WriteSseEventAsync("content", new
                     {
-                        content = chunk.Content,
-                        isComplete = chunk.IsComplete
+                        content = streamEvent.Content,
+                        isComplete = streamEvent.IsComplete
                     }, context.RequestAborted);
-
-                    if (chunk.IsComplete)
-                    {
-                        streamFinalUsage = chunk.Usage;
-                        streamFinalModelId = chunk.ModelId;
-                        streamFinalFinishReason = chunk.FinishReason;
-                    }
+                    continue;
                 }
 
-                streamStopwatch.Stop();
-
-                // Parse structured output if requested
-                JsonElement? streamParsedStructuredOutput = null;
-                if (chatRequest.StructuredOutput != null && accumulatedContent.Length > 0)
+                if (streamEvent.EventType == "error")
                 {
-                    try
-                    {
-                        streamParsedStructuredOutput = StructuredOutputHelper.ExtractStructuredOutput(accumulatedContent.ToString());
-                        if (streamParsedStructuredOutput.HasValue)
-                        {
-                            var validated = StructuredOutputHelper.ParseAndValidate(
-                                accumulatedContent.ToString(),
-                                chatRequest.StructuredOutput.Schema);
-                            if (validated.HasValue)
-                            {
-                                streamParsedStructuredOutput = validated;
-                            }
-                        }
-                    }
-                    catch
-                    {
-                        // Ignore structured output parsing errors
-                    }
+                    await WriteSseEventAsync("error", new { error = streamEvent.Error ?? "Streaming failed" }, context.RequestAborted);
+                    continue;
                 }
 
-                // Record quota usage
-                var streamTokensUsed = streamFinalUsage?.TotalTokens ?? estimatedTokens;
-                await quotaEnforcer.RecordChatRequestAsync(tenantId, streamTokensUsed, context.RequestAborted);
-
-                // Record cost
-                if (streamFinalUsage != null && !string.IsNullOrEmpty(streamFinalModelId))
-                {
-                    var costCalculator = context.RequestServices.GetRequiredService<ICostCalculator>();
-                    var costTracker = context.RequestServices.GetRequiredService<ICostTracker>();
-                    var streamProvider = GetProviderFromModelId(streamFinalModelId);
-                    var cost = costCalculator.CalculateChatCost(
-                        streamProvider,
-                        streamFinalModelId,
-                        streamFinalUsage.PromptTokens,
-                        streamFinalUsage.CompletionTokens);
-
-                    var costRecord = new CostRecord(
-                        Id: Guid.NewGuid().ToString(),
-                        TenantId: tenantId,
-                        OperationType: CostOperationType.Chat,
-                        Provider: streamProvider,
-                        ModelId: streamFinalModelId,
-                        TokensUsed: streamFinalUsage.TotalTokens,
-                        PromptTokens: streamFinalUsage.PromptTokens,
-                        CompletionTokens: streamFinalUsage.CompletionTokens,
-                        Cost: cost);
-
-                    await costTracker.RecordCostAsync(costRecord, context.RequestAborted);
-                }
-
-                // Build citations
-                var streamCitations = retrieved.Chunks.Select(c => new Citation(
-                    c.SourceUri,
-                    c.DocId,
-                    c.Chunk.Id,
-                    c.Chunk.Text,
-                    c.Score)).ToList();
-
-                var streamModelProvider = !string.IsNullOrEmpty(streamFinalModelId) 
-                    ? GetProviderFromModelId(streamFinalModelId) 
-                    : "Unknown";
-                var streamTelemetry = streamFinalUsage != null
-                    ? new ModelTelemetry(
-                        streamFinalModelId ?? "unknown",
-                        streamFinalUsage.TotalTokens,
-                        streamStopwatch.ElapsedMilliseconds,
-                        streamModelProvider)
-                    : null;
-
-                // Send completion event
-                await WriteSseEventAsync("complete", new
-                {
-                    content = accumulatedContent.ToString(),
-                    usage = streamFinalUsage,
-                    modelId = streamFinalModelId,
-                    finishReason = streamFinalFinishReason,
-                    structuredOutput = streamParsedStructuredOutput,
-                    citations = streamCitations,
-                    telemetry = streamTelemetry
-                }, context.RequestAborted);
-
-                await WriteSseEventAsync("done", new { }, context.RequestAborted);
-            }
-            catch (Exception ex)
-            {
-                streamStopwatch.Stop();
-                activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
-                await WriteSseEventAsync("error", new { error = ex.Message }, context.RequestAborted);
+                await WriteSseEventAsync(streamEvent.EventType, new { }, context.RequestAborted);
             }
 
             return Results.Empty;
         }
 
-        // Non-streaming response
-        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
-        var response = await chatModel.GenerateAsync(augmentedRequest, context.RequestAborted);
-        stopwatch.Stop();
-
-        // Record quota usage
-        var tokensUsed = response.Usage?.TotalTokens ?? estimatedTokens;
-        await quotaEnforcer.RecordChatRequestAsync(tenantId, tokensUsed, context.RequestAborted);
-
-        // Record cost
-        if (response.Usage != null && !string.IsNullOrEmpty(response.ModelId))
-        {
-            var costCalculator = context.RequestServices.GetRequiredService<ICostCalculator>();
-            var costTracker = context.RequestServices.GetRequiredService<ICostTracker>();
-            var provider = GetProviderFromModelId(response.ModelId);
-            var cost = costCalculator.CalculateChatCost(
-                provider,
-                response.ModelId,
-                response.Usage.PromptTokens,
-                response.Usage.CompletionTokens);
-
-            var costRecord = new CostRecord(
-                Id: Guid.NewGuid().ToString(),
-                TenantId: tenantId,
-                OperationType: CostOperationType.Chat,
-                Provider: provider,
-                ModelId: response.ModelId,
-                TokensUsed: response.Usage.TotalTokens,
-                PromptTokens: response.Usage.PromptTokens,
-                CompletionTokens: response.Usage.CompletionTokens,
-                Cost: cost);
-
-            await costTracker.RecordCostAsync(costRecord, context.RequestAborted);
-        }
-
-        // Parse structured output if requested
-        JsonElement? parsedStructuredOutput = null;
-        if (chatRequest.StructuredOutput != null && !string.IsNullOrEmpty(response.Content))
-        {
-            parsedStructuredOutput = StructuredOutputHelper.ExtractStructuredOutput(response.Content);
-            if (parsedStructuredOutput.HasValue)
-            {
-                var validated = StructuredOutputHelper.ParseAndValidate(
-                    response.Content,
-                    chatRequest.StructuredOutput.Schema);
-                if (validated.HasValue)
-                {
-                    parsedStructuredOutput = validated;
-                }
-            }
-        }
-
-        // Update response with structured output if parsed
-        var finalResponse = parsedStructuredOutput.HasValue
-            ? response with { StructuredOutput = parsedStructuredOutput }
-            : response;
-
-        // Build citations
-        var citations = retrieved.Chunks.Select(c => new Citation(
+        var orchestrated = await orchestrationService.ExecuteAsync(tenantId, chatRequest, context.RequestAborted);
+        var citations = orchestrated.Retrieved.Chunks.Select(c => new Citation(
             c.SourceUri,
             c.DocId,
             c.Chunk.Id,
             c.Chunk.Text,
             c.Score)).ToList();
 
-        var modelProvider = !string.IsNullOrEmpty(response.ModelId) 
-            ? GetProviderFromModelId(response.ModelId) 
+        var modelProvider = !string.IsNullOrEmpty(orchestrated.Response.ModelId)
+            ? GetProviderFromModelId(orchestrated.Response.ModelId)
             : "Unknown";
-        var telemetry = response.Usage != null
+        var telemetry = orchestrated.Response.Usage != null
             ? new ModelTelemetry(
-                response.ModelId ?? "unknown",
-                response.Usage.TotalTokens,
-                stopwatch.ElapsedMilliseconds,
+                orchestrated.Response.ModelId ?? "unknown",
+                orchestrated.Response.Usage.TotalTokens,
+                orchestrated.ElapsedMilliseconds,
                 modelProvider)
             : null;
 
         var output = new AiOutputEnvelope(
             OutputStatus.Success,
             "chat",
-            JsonSerializer.SerializeToElement(finalResponse),
+            JsonSerializer.SerializeToElement(orchestrated.Response),
             citations,
             telemetry);
 

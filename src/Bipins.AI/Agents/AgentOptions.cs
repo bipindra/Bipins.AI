@@ -54,6 +54,16 @@ public class AgentOptions
     /// Maximum tokens per request.
     /// </summary>
     public int? MaxTokens { get; set; }
+
+    /// <summary>
+    /// Enables Semantic Kernel backed planner implementation when registered.
+    /// </summary>
+    public bool UseSemanticKernelPlanner { get; set; }
+
+    /// <summary>
+    /// Enables history reduction before chat calls.
+    /// </summary>
+    public bool EnableHistoryReduction { get; set; } = true;
 }
 
 /// <summary>
@@ -75,4 +85,14 @@ public class AgentMemoryOptions
     /// Number of relevant memories to retrieve when searching.
     /// </summary>
     public int SearchTopK { get; set; } = 5;
+
+    /// <summary>
+    /// Maximum number of messages kept before reduction is applied.
+    /// </summary>
+    public int HistoryReductionThreshold { get; set; } = 40;
+
+    /// <summary>
+    /// Number of latest messages to preserve after reduction.
+    /// </summary>
+    public int ReducedHistoryTarget { get; set; } = 20;
 }
