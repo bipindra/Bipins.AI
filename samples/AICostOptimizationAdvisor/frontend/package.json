@@ -10,7 +10,7 @@
   "dependencies": {
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "axios": "^1.13.5",
+    "axios": "^1.15.2",
     "recharts": "^2.10.0"
   },
   "devDependencies": {
