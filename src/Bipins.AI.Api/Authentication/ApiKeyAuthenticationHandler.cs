@@ -55,7 +55,7 @@ public class ApiKeyAuthenticationHandler : AuthenticationHandler<AuthenticationS
 
         // Validate API key
         var validationResult = await _apiKeyValidator.ValidateAsync(apiKey, Context.RequestAborted);
-        if (!validationResult.IsValid)
+        if (!validationResult.IsValid || string.IsNullOrWhiteSpace(validationResult.TenantId))
         {
             _auditLogger?.LogAuthentication("unknown", "unknown", "ApiKey", false, "Invalid API key");
             return AuthenticateResult.Fail("Invalid API key");
@@ -121,15 +121,9 @@ public class InMemoryApiKeyValidator : IApiKeyValidator
     public InMemoryApiKeyValidator(ILogger<InMemoryApiKeyValidator> logger)
     {
         _logger = logger;
-        _apiKeys = new Dictionary<string, ApiKeyInfo>(StringComparer.OrdinalIgnoreCase);
+        _apiKeys = new Dictionary<string, ApiKeyInfo>(StringComparer.Ordinal);
         
-        // Add a default API key for testing (in production, load from database/configuration)
-        _apiKeys["test-api-key"] = new ApiKeyInfo
-        {
-            TenantId = "default",
-            ApiKeyId = "test-key-1",
-            Roles = new[] { "User" }
-        };
+
     }
 
     /// <inheritdoc />

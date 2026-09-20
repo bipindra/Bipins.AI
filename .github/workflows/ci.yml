@@ -10,24 +10,18 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    
-    strategy:
-      matrix:
-        dotnet-version: ['8.0.x']
-    
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
       with:
-        fetch-depth: 0  # Required for SourceLink
-    
+        fetch-depth: 0
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
       with:
-        dotnet-version: ${{ matrix.dotnet-version }}
-    
+        dotnet-version: |
+          8.0.x
+          10.0.x
     - name: Install Cake.Tool
-      run: dotnet tool install --global Cake.Tool
-    
-    - name: Run Cake Build (CI)
+      run: dotnet tool install --global Cake.Tool --version 5.0.0
+    - name: Run Cake Build and Unit Tests
       run: dotnet cake build.cake --target=CI

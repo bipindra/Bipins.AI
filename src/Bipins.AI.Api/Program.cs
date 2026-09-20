@@ -64,13 +64,6 @@ builder.Services.AddSwaggerGen(options =>
     }
 
     // Add security definitions
-    options.AddSecurityDefinition("Basic", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
-    {
-        Type = Microsoft.OpenApi.Models.SecuritySchemeType.Http,
-        Scheme = "basic",
-        Description = "Basic authentication using username and password"
-    });
-
     options.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
     {
         Type = Microsoft.OpenApi.Models.SecuritySchemeType.Http,
@@ -96,7 +89,7 @@ builder.Services.AddSwaggerGen(options =>
                 Reference = new Microsoft.OpenApi.Models.OpenApiReference
                 {
                     Type = Microsoft.OpenApi.Models.ReferenceType.SecurityScheme,
-                    Id = "Basic"
+                    Id = "ApiKey"
                 }
             },
             Array.Empty<string>()
@@ -147,57 +140,52 @@ builder.Services
 // Register audit logger
 builder.Services.AddSingleton<IAuditLogger, AuditLogger>();
 
-// Register API key validator
-builder.Services.AddSingleton<IApiKeyValidator, InMemoryApiKeyValidator>();
-
-// Configure authentication
-builder.Services.AddAuthentication(options =>
-{
-    options.DefaultAuthenticateScheme = "Basic";
-    options.DefaultChallengeScheme = "Basic";
-})
-    .AddScheme<AuthenticationSchemeOptions, BasicAuthenticationHandler>("Basic", null)
+// API credentials must be provisioned through configuration or a secret provider.
+builder.Services.AddSingleton<IApiKeyValidator, ConfigurationApiKeyValidator>();
+builder.Services.AddAuthentication("Api")
+    .AddPolicyScheme("Api", "API key or JWT", options =>
+    {
+        options.ForwardDefaultSelector = context =>
+            context.Request.Headers.Authorization.ToString().StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase)
+                ? "Bearer" : "ApiKey";
+    })
     .AddScheme<AuthenticationSchemeOptions, ApiKeyAuthenticationHandler>("ApiKey", null)
     .AddJwtBearer("Bearer", options =>
     {
+        options.MapInboundClaims = false;
         var jwtSecret = builder.Configuration.GetValueOrEnvironmentVariable("Jwt:Secret", "JWT_SECRET");
-        var jwtIssuer = builder.Configuration.GetValueOrEnvironmentVariable("Jwt:Issuer", "JWT_ISSUER") ?? "Bipins.AI";
-        var jwtAudience = builder.Configuration.GetValueOrEnvironmentVariable("Jwt:Audience", "JWT_AUDIENCE") ?? "Bipins.AI";
-
-        if (!string.IsNullOrEmpty(jwtSecret))
+        options.TokenValidationParameters = new Microsoft.IdentityModel.Tokens.TokenValidationParameters
         {
-            var key = System.Text.Encoding.UTF8.GetBytes(jwtSecret);
-            options.TokenValidationParameters = new Microsoft.IdentityModel.Tokens.TokenValidationParameters
-            {
-                ValidateIssuerSigningKey = true,
-                IssuerSigningKey = new Microsoft.IdentityModel.Tokens.SymmetricSecurityKey(key),
-                ValidateIssuer = !string.IsNullOrEmpty(jwtIssuer),
-                ValidIssuer = jwtIssuer,
-                ValidateAudience = !string.IsNullOrEmpty(jwtAudience),
-                ValidAudience = jwtAudience,
-                ValidateLifetime = true,
-                ClockSkew = TimeSpan.Zero
-            };
-        }
-        else
+            RequireSignedTokens = true,
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = string.IsNullOrWhiteSpace(jwtSecret) ? null
+                : new Microsoft.IdentityModel.Tokens.SymmetricSecurityKey(System.Text.Encoding.UTF8.GetBytes(jwtSecret)),
+            ValidateIssuer = true,
+            ValidIssuer = builder.Configuration.GetValueOrEnvironmentVariable("Jwt:Issuer", "JWT_ISSUER") ?? "Bipins.AI",
+            ValidateAudience = true,
+            ValidAudience = builder.Configuration.GetValueOrEnvironmentVariable("Jwt:Audience", "JWT_AUDIENCE") ?? "Bipins.AI",
+            ValidateLifetime = true,
+            ClockSkew = TimeSpan.Zero,
+            RoleClaimType = "role"
+        };
+        options.Events = new Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerEvents
         {
-            // In development, allow unvalidated tokens (not recommended for production)
-            options.TokenValidationParameters = new Microsoft.IdentityModel.Tokens.TokenValidationParameters
+            OnTokenValidated = context =>
             {
-                ValidateIssuerSigningKey = false,
-                ValidateIssuer = false,
-                ValidateAudience = false,
-                ValidateLifetime = false
-            };
-        }
+                if (string.IsNullOrWhiteSpace(context.Principal?.FindFirst("tenantId")?.Value))
+                    context.Fail("A tenantId claim is required.");
+                return Task.CompletedTask;
+            }
+        };
     });
 
-// Configure authorization with role-based policies
 builder.Services.AddAuthorization(options =>
 {
-    options.AddPolicy("Admin", policy => policy.RequireRole("Admin"));
-    options.AddPolicy("User", policy => policy.RequireRole("User", "Admin"));
-    options.AddPolicy("TenantAdmin", policy => policy.RequireClaim("tenantId"));
+    options.DefaultPolicy = new Microsoft.AspNetCore.Authorization.AuthorizationPolicyBuilder("Api")
+        .RequireAuthenticatedUser().RequireClaim("tenantId").Build();
+    options.AddPolicy("Admin", policy => policy.RequireAuthenticatedUser().RequireClaim("tenantId").RequireRole("Admin"));
+    options.AddPolicy("User", policy => policy.RequireAuthenticatedUser().RequireClaim("tenantId").RequireRole("User", "Admin"));
+    options.AddPolicy("TenantAdmin", policy => policy.RequireAuthenticatedUser().RequireClaim("tenantId").RequireRole("Admin"));
 });
 
 var app = builder.Build();
@@ -249,6 +237,8 @@ app.MapPost("/v1/ingest/text", async (
     var tenantIdFromBody = request.RootElement.TryGetProperty("tenantId", out var tenantProp)
         ? tenantProp.GetString()
         : null;
+    if (!TenantAccess.CanAccess(context.User, tenantIdFromBody ?? tenantId))
+        return Results.Forbid();
     tenantId = tenantIdFromBody ?? tenantId;
 
     // Validate tenant ID
@@ -358,6 +348,8 @@ app.MapPost("/v1/ingest/batch", async (
         var tenantIdFromBody = request.RootElement.TryGetProperty("tenantId", out var tenantProp)
             ? tenantProp.GetString()
             : null;
+        if (!TenantAccess.CanAccess(context.User, tenantIdFromBody ?? tenantId))
+            return Results.Forbid();
         tenantId = tenantIdFromBody ?? tenantId;
 
         // Validate tenant ID
@@ -381,28 +373,22 @@ app.MapPost("/v1/ingest/batch", async (
             ? JsonSerializer.Deserialize<List<string>>(textsProp.GetRawText())
             : null;
 
-        if (sourceUris == null && texts == null)
-        {
-            return Results.BadRequest(new { error = "Either sourceUris or texts must be provided" });
-        }
-
-        if (sourceUris != null && texts != null)
-        {
-            return Results.BadRequest(new { error = "Cannot provide both sourceUris and texts" });
-        }
+        // Remote callers cannot select paths on the server.
+        if (sourceUris != null)
+            return Results.BadRequest(new { error = "sourceUris is not supported over HTTP; submit texts instead." });
+        if (texts == null || texts.Count == 0)
+            return Results.BadRequest(new { error = "texts is required and must not be empty" });
 
         var maxConcurrency = request.RootElement.TryGetProperty("maxConcurrency", out var concurrencyProp)
             ? concurrencyProp.GetInt32()
             : (int?)null;
 
+        if (maxConcurrency is <= 0 or > 32)
+            return Results.BadRequest(new { error = "maxConcurrency must be between 1 and 32" });
+
         // Prepare source URIs
         var urisToProcess = new List<string>();
 
-        if (sourceUris != null)
-        {
-            urisToProcess.AddRange(sourceUris);
-        }
-        else if (texts != null)
         {
             // Create temporary files for text ingestion
             var tempFiles = new List<string>();
@@ -458,27 +444,7 @@ app.MapPost("/v1/ingest/batch", async (
             }
         }
 
-        // Process batch ingestion with source URIs
-        var indexOptions = new IndexOptions(tenantId, null, null, null);
-        var batchResult = await pipeline.IngestBatchAsync(
-            urisToProcess,
-            indexOptions,
-            maxConcurrency: maxConcurrency,
-            cancellationToken: context.RequestAborted);
 
-        // Record quota usage
-        var estimatedStorageBatch2 = batchResult.TotalChunksIndexed * 1024; // Rough estimate
-        await quotaEnforcer.RecordDocumentIngestionAsync(tenantId, batchResult.TotalChunksIndexed, estimatedStorageBatch2, context.RequestAborted);
-
-        var batchOutput = new AiOutputEnvelope(
-            batchResult.Errors.Count > 0 ? OutputStatus.Partial : OutputStatus.Success,
-            "ingest.batch",
-            JsonSerializer.SerializeToElement(batchResult),
-            null,
-            null,
-            batchResult.Errors.Select(e => e.ErrorMessage).ToList());
-
-        return Results.Ok(batchOutput);
     }
     catch (Exception ex)
     {
@@ -1107,6 +1073,9 @@ app.MapGet("/v1/costs/{tenantId}", async (
 {
     using var activity = BipinsAiActivitySource.Instance.StartActivity("api.costs.get");
 
+    if (!TenantAccess.CanAccess(context.User, tenantId))
+        return Results.Forbid();
+
     try
     {
         // Validate tenant ID
@@ -1153,6 +1122,9 @@ app.MapGet("/v1/costs/{tenantId}/records", async (
     ICostTracker costTracker) =>
 {
     using var activity = BipinsAiActivitySource.Instance.StartActivity("api.costs.records.get");
+
+    if (!TenantAccess.CanAccess(context.User, tenantId))
+        return Results.Forbid();
 
     try
     {
@@ -1279,3 +1251,6 @@ static string GetProviderFromModelId(string? modelId)
 
     return "Unknown";
 }
+
+// Exposes the application entry point to integration tests.
+public partial class Program { }

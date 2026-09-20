@@ -85,11 +85,11 @@
     <PackageReference Include="System.Linq.Async" Version="6.0.1" Condition="'$(TargetFramework)' != 'net10.0'" />
     
     <!-- System.Text.Json - version varies by target framework -->
-    <PackageReference Include="System.Text.Json" Version="9.0.14" Condition="'$(TargetFramework)' == 'netstandard2.1' OR '$(TargetFramework)' == 'net7.0' OR '$(TargetFramework)' == 'net8.0' OR '$(TargetFramework)' == 'net9.0'" />
-    <PackageReference Include="System.Text.Json" Version="10.0.0" Condition="'$(TargetFramework)' == 'net10.0'" />
+    <PackageReference Include="System.Text.Json" Version="10.0.8" Condition="'$(TargetFramework)' == 'netstandard2.1' OR '$(TargetFramework)' == 'net7.0' OR '$(TargetFramework)' == 'net8.0' OR '$(TargetFramework)' == 'net9.0'" />
+    <PackageReference Include="System.Text.Json" Version="10.0.8" Condition="'$(TargetFramework)' == 'net10.0'" />
     
     <!-- Polyfill for init accessors in .NET Standard 2.1 -->
-    <PackageReference Include="System.Runtime.CompilerServices.Unsafe" Version="6.0.0" Condition="'$(TargetFramework)' == 'netstandard2.1'" />
+    <PackageReference Include="System.Runtime.CompilerServices.Unsafe" Version="6.1.2" Condition="'$(TargetFramework)' == 'netstandard2.1'" />
     
     <!-- Safety and Resilience -->
     <PackageReference Include="Polly" Version="8.3.0" />
