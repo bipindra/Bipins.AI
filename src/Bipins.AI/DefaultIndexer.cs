@@ -31,6 +31,9 @@ public class DefaultIndexer : IIndexer
     /// <inheritdoc />
     public async Task<IndexResult> IndexAsync(IEnumerable<Chunk> chunks, IndexOptions options, CancellationToken cancellationToken = default)
     {
+        TenantValidator.ValidateOrThrow(options.TenantId);
+        if (options.UpdateMode == UpdateMode.Update && options.DeleteOldVersions && string.IsNullOrWhiteSpace(options.VersionId))
+            options = options with { VersionId = Guid.NewGuid().ToString("N") };
         var chunkList = chunks.ToList();
         if (chunkList.Count == 0)
         {
@@ -86,12 +89,15 @@ public class DefaultIndexer : IIndexer
                 {
                     foreach (var kvp in chunk.Metadata)
                     {
-                        metadata[kvp.Key] = kvp.Value;
+                        // Caller metadata cannot override isolation or version ownership.
+                        if (kvp.Key != "tenantId" && kvp.Key != "docId" && kvp.Key != "versionId" && kvp.Key != "chunkId")
+                            metadata[kvp.Key] = kvp.Value;
                     }
                 }
 
+                // A replacement must not overwrite existing IDs before its write completes.
                 var record = new VectorRecord(
-                    chunk.Id,
+                    options.UpdateMode == UpdateMode.Update ? Guid.NewGuid().ToString() : chunk.Id,
                     vector,
                     chunk.Text,
                     metadata,
@@ -104,76 +110,44 @@ public class DefaultIndexer : IIndexer
                 records.Add(record);
             }
 
-            // Handle versioning: delete old versions if needed
+            // Commit the replacement first. A failed write must leave old versions intact.
+            await _vectorStore.UpsertAsync(new VectorUpsertRequest(records, options.CollectionName), cancellationToken);
+            vectorsCreated = records.Count;
+
             if (options.UpdateMode == UpdateMode.Update && options.DocId != null && options.DeleteOldVersions)
             {
-                try
+                // Use the actual embedding dimension and delete bounded pages until exhausted.
+                var filter = new VectorFilterAnd(new VectorFilter[]
                 {
-                    // Query to find old version IDs
-                    VectorFilter? queryFilter = new VectorFilterPredicate(
-                        new FilterPredicate("docId", FilterOperator.Eq, options.DocId));
-                    
-                    // If we have a version ID, exclude it from deletion
-                    if (options.VersionId != null)
-                    {
-                        var versionFilter = new VectorFilterPredicate(
-                            new FilterPredicate("versionId", FilterOperator.Ne, options.VersionId));
-                        queryFilter = new VectorFilterAnd(new[] { queryFilter, versionFilter });
-                    }
-
-                    // Query to get IDs of old versions
-                    // Use a dummy vector for filtering (dimension 1536 is common for OpenAI embeddings)
-                    var dummyVector = new float[1536].AsMemory();
-                    
-                    // Ensure tenant filter is included
-                    var tenantFilter = new VectorFilterPredicate(
-                        new FilterPredicate("tenantId", FilterOperator.Eq, options.TenantId));
-                    VectorFilter combinedFilter;
-                    if (queryFilter != null)
-                    {
-                        combinedFilter = new VectorFilterAnd(new[] { tenantFilter, queryFilter });
-                    }
-                    else
-                    {
-                        combinedFilter = tenantFilter;
-                    }
-                    
-                    var queryRequest = new VectorQueryRequest(
-                        dummyVector,
-                        TopK: 10000, // Large number to get all matches
-                        options.TenantId,
-                        combinedFilter,
-                        options.CollectionName);
-                    
-                    var queryResponse = await _vectorStore.QueryAsync(queryRequest, cancellationToken);
-                    var oldVersionIds = queryResponse.Matches.Select(m => m.Record.Id).ToList();
-
-                    if (oldVersionIds.Count > 0)
-                    {
-                        var deleteRequest = new VectorDeleteRequest(
-                            oldVersionIds,
-                            options.CollectionName);
-                        await _vectorStore.DeleteAsync(deleteRequest, cancellationToken);
-                        _logger.LogInformation("Deleted {Count} old version records for document {DocId}", oldVersionIds.Count, options.DocId);
-                    }
-                }
-                catch (Exception ex)
+                    new VectorFilterPredicate(new FilterPredicate("tenantId", FilterOperator.Eq, options.TenantId)),
+                    new VectorFilterPredicate(new FilterPredicate("docId", FilterOperator.Eq, options.DocId)),
+                    new VectorFilterPredicate(new FilterPredicate("versionId", FilterOperator.Ne, options.VersionId!))
+                });
+                var deletedIds = new HashSet<string>();
+                var newIds = new HashSet<string>(records.Select(r => r.Id));
+                while (true)
                 {
-                    _logger.LogWarning(ex, "Failed to delete old versions for document {DocId}", options.DocId);
-                    // Continue with indexing even if deletion fails
+                    cancellationToken.ThrowIfCancellationRequested();
+                    var page = await _vectorStore.QueryAsync(new VectorQueryRequest(
+                        records[0].Vector, 256, options.TenantId, filter, options.CollectionName), cancellationToken);
+                    if (page.Matches.Count == 0) break;
+                    var oldIds = page.Matches.Select(m => m.Record.Id).Distinct().ToList();
+                    if (oldIds.Any(id => newIds.Contains(id) || deletedIds.Contains(id)))
+                        throw new InvalidOperationException("Old-version cleanup did not make progress; replacement records are preserved.");
+                    await _vectorStore.DeleteAsync(new VectorDeleteRequest(oldIds, options.CollectionName), cancellationToken);
+                    foreach (var id in oldIds) deletedIds.Add(id);
                 }
             }
 
-            // Upsert to vector store
-            var upsertRequest = new VectorUpsertRequest(records, options.CollectionName);
-            await _vectorStore.UpsertAsync(upsertRequest, cancellationToken);
-
-            vectorsCreated = records.Count;
             _logger.LogInformation(
                 "Indexed {Count} chunks for tenant {TenantId}, doc {DocId}",
                 records.Count,
                 options.TenantId,
                 options.DocId);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
         }
         catch (Exception ex)
         {

@@ -47,7 +47,7 @@ public class QdrantVectorStore : IVectorStore
         }
 
         var client = CreateHttpClient();
-        var url = $"{_options.Endpoint}/collections/{collectionName}/points";
+        var url = $"{_options.Endpoint}/collections/{collectionName}/points?wait=true";
 
         var points = request.Records.Select(r => new QdrantPoint(
             r.Id,
@@ -155,7 +155,7 @@ public class QdrantVectorStore : IVectorStore
             await EnsureCollectionExistsAsync(collectionName, cancellationToken);
         }
         var client = CreateHttpClient();
-        var url = $"{_options.Endpoint}/collections/{collectionName}/points/delete";
+        var url = $"{_options.Endpoint}/collections/{collectionName}/points/delete?wait=true";
 
         var qdrantRequest = new QdrantDeleteRequest(request.Ids.ToList());
 

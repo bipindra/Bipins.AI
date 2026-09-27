@@ -65,31 +65,6 @@ public class IngestionPipeline
             options = options with { VersionId = versionId };
         }
 
-        // Check for existing versions if update mode is Update
-        if (options.UpdateMode == UpdateMode.Update && _versionManager != null && !string.IsNullOrEmpty(options.DocId))
-        {
-            var existingVersions = await _versionManager.ListVersionsAsync(
-                options.TenantId,
-                options.DocId,
-                options.CollectionName,
-                cancellationToken);
-            
-            if (existingVersions.Count == 0)
-            {
-                _logger.LogWarning(
-                    "Update mode specified but no existing versions found for document {DocId}. Will create new version.",
-                    options.DocId);
-            }
-            else
-            {
-                _logger.LogInformation(
-                    "Found {Count} existing versions for document {DocId}. Updating with version {VersionId}",
-                    existingVersions.Count,
-                    options.DocId,
-                    versionId);
-            }
-        }
-
         // Load
         var document = await _loader.LoadAsync(sourceUri, cancellationToken);
 

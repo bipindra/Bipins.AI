@@ -91,7 +91,7 @@ Task("Build")
 // Run unit tests (excluding integration tests)
 Task("Test")
     .IsDependentOn("Build")
-    .WithCriteria(!skipTests && target != "CI")
+    .WithCriteria(!skipTests || target == "CI")
     .Does(() =>
 {
     Information("Running unit tests (excluding integration tests)...");
@@ -199,7 +199,7 @@ Task("Default")
 
 // Full CI pipeline
 Task("CI")
-    .IsDependentOn("Build");
+    .IsDependentOn("Test");
 
 // Full release pipeline
 Task("Release")

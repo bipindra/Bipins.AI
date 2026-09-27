@@ -70,16 +70,14 @@ public class AuthenticationTests
     }
 
     [Fact]
-    public async Task InMemoryApiKeyValidator_ValidateAsync_ValidKey_ReturnsSuccess()
+    public async Task InMemoryApiKeyValidator_ValidateAsync_DefaultTestKey_IsRejected()
     {
         var logger = new Mock<ILogger<InMemoryApiKeyValidator>>();
         var validator = new InMemoryApiKeyValidator(logger.Object);
 
         var result = await validator.ValidateAsync("test-api-key");
 
-        Assert.True(result.IsValid);
-        Assert.Equal("default", result.TenantId);
-        Assert.Equal("test-key-1", result.ApiKeyId);
+        Assert.False(result.IsValid);
     }
 
     [Fact]

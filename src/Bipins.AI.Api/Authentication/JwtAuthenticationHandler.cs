@@ -28,26 +28,8 @@ public class JwtAuthenticationHandler : JwtBearerHandler
     {
         var result = await base.HandleAuthenticateAsync();
         
-        if (result.Succeeded && result.Principal != null)
-        {
-            // Ensure tenantId claim exists (extract from token or use default)
-            var tenantId = result.Principal.FindFirst("tenantId")?.Value 
-                ?? result.Principal.FindFirst("sub")?.Value 
-                ?? "default";
-
-            // Add tenantId claim if not present
-            if (result.Principal.FindFirst("tenantId") == null)
-            {
-                var claims = result.Principal.Claims.ToList();
-                claims.Add(new Claim("tenantId", tenantId));
-                
-                var identity = new ClaimsIdentity(claims, result.Principal.Identity?.AuthenticationType);
-                var principal = new ClaimsPrincipal(identity);
-                var ticket = new AuthenticationTicket(principal, result.Ticket?.AuthenticationScheme ?? "Bearer");
-                
-                return AuthenticateResult.Success(ticket);
-            }
-        }
+        if (result.Succeeded && string.IsNullOrWhiteSpace(result.Principal?.FindFirst("tenantId")?.Value))
+            return AuthenticateResult.Fail("A tenantId claim is required.");
 
         return result;
     }
